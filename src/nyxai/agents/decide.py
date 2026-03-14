@@ -9,7 +9,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from nyxai.agents.base import Agent, AgentConfig, AgentContext, AgentResult, AgentRole
+from nyxai.agents.base import Agent, AgentConfig, AgentResult
+from nyxai.types import AgentContext, AgentRole
 from nyxai.knowledge_base.incident_kb import IncidentKnowledgeBase
 from nyxai.recovery.risk.assessor import RiskAssessor
 from nyxai.recovery.strategies.base import RecoveryAction

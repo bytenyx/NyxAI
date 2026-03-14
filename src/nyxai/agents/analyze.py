@@ -8,7 +8,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from nyxai.agents.base import Agent, AgentConfig, AgentContext, AgentResult, AgentRole
+from nyxai.agents.base import Agent, AgentConfig, AgentResult
+from nyxai.types import AgentContext, AgentRole
 from nyxai.llm.providers.base import LLMProvider
 from nyxai.llm.prompts import RCAPromptBuilder, RCAPromptConfig, RCAPromptTemplate
 from nyxai.llm.prompts.rca_prompts import (

@@ -8,7 +8,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from nyxai.agents.base import Agent, AgentConfig, AgentContext, AgentResult, AgentRole
+from nyxai.agents.base import Agent, AgentConfig, AgentResult
+from nyxai.types import AgentContext, AgentRole
 from nyxai.recovery.executor.executor import ActionExecutor, ExecutionResult
 from nyxai.recovery.strategies.base import RecoveryAction
 

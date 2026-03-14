@@ -9,7 +9,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from nyxai.agents.base import Agent, AgentConfig, AgentContext, AgentResult, AgentRole
+from nyxai.agents.base import Agent, AgentConfig, AgentResult
+from nyxai.types import AgentContext, AgentRole
 from nyxai.detection.base import BaseDetector
 from nyxai.detection.models.anomaly import Anomaly
 
