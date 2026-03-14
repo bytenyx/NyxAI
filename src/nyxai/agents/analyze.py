@@ -10,6 +10,12 @@ from typing import Any
 
 from nyxai.agents.base import Agent, AgentConfig, AgentContext, AgentResult, AgentRole
 from nyxai.llm.providers.base import LLMProvider
+from nyxai.llm.prompts import RCAPromptBuilder, RCAPromptConfig, RCAPromptTemplate
+from nyxai.llm.prompts.rca_prompts import (
+    AnomalyContext,
+    DimensionContext,
+    ServiceContext,
+)
 from nyxai.rca.topology.service_graph import ServiceGraph
 
 
@@ -20,6 +26,10 @@ class AnalyzeAgentConfig(AgentConfig):
         use_llm: Whether to use LLM for analysis.
         max_root_causes: Maximum number of root causes to identify.
         include_topology_analysis: Whether to include topology analysis.
+        prompt_template: LLM prompt template to use.
+        prompt_language: Output language for prompts.
+        include_dimension_analysis: Whether to include dimension attribution.
+        include_historical_context: Whether to include historical incidents.
     """
 
     def __init__(self) -> None:
@@ -30,6 +40,10 @@ class AnalyzeAgentConfig(AgentConfig):
         self.use_llm = True
         self.max_root_causes = 5
         self.include_topology_analysis = True
+        self.prompt_template = RCAPromptTemplate.STANDARD
+        self.prompt_language = "zh"
+        self.include_dimension_analysis = True
+        self.include_historical_context = True
 
 
 class AnalyzeAgent(Agent):
@@ -42,6 +56,7 @@ class AnalyzeAgent(Agent):
         config: Analyze agent configuration.
         _service_graph: Service topology graph.
         _llm_provider: Optional LLM provider for analysis.
+        _prompt_builder: Builder for RCA prompts.
     """
 
     def __init__(
@@ -61,6 +76,16 @@ class AnalyzeAgent(Agent):
         self.analyze_config = config or AnalyzeAgentConfig()
         self._service_graph = service_graph
         self._llm_provider = llm_provider
+
+        # Initialize prompt builder with config
+        prompt_config = RCAPromptConfig(
+            template=self.analyze_config.prompt_template,
+            max_root_causes=self.analyze_config.max_root_causes,
+            include_metrics=self.analyze_config.include_dimension_analysis,
+            include_topology=self.analyze_config.include_topology_analysis,
+            language=self.analyze_config.prompt_language,
+        )
+        self._prompt_builder = RCAPromptBuilder(prompt_config)
 
     async def execute(self, context: AgentContext) -> AgentResult:
         """Execute root cause analysis.
@@ -102,7 +127,10 @@ class AnalyzeAgent(Agent):
 
             # Perform LLM-based analysis if enabled
             if self.analyze_config.use_llm and self._llm_provider:
-                llm_causes = await self._analyze_with_llm(detected_anomalies, service_id)
+                llm_result = await self._analyze_with_llm(
+                    detected_anomalies, service_id, context
+                )
+                llm_causes = llm_result.get("root_causes", [])
                 # Merge LLM results with topology results
                 root_causes = self._merge_causes(root_causes, llm_causes)
 
@@ -203,133 +231,236 @@ class AnalyzeAgent(Agent):
         self,
         anomalies: list[dict[str, Any]],
         service_id: str,
-    ) -> list[dict[str, Any]]:
-        """Analyze root causes using LLM.
+        context: AgentContext,
+    ) -> dict[str, Any]:
+        """Analyze root causes using LLM with optimized prompts.
 
         Args:
             anomalies: List of detected anomalies.
             service_id: ID of the affected service.
+            context: Agent execution context.
 
         Returns:
-            List of root cause candidates.
+            Dictionary containing root causes and analysis summary.
         """
         if not self._llm_provider:
-            return []
+            return {"root_causes": []}
 
         try:
-            # Build prompt
-            prompt = self._build_analysis_prompt(anomalies, service_id)
+            # Build comprehensive contexts
+            service_context = self._build_service_context(service_id)
+            anomaly_contexts = self._build_anomaly_contexts(anomalies)
+            dimension_context = self._build_dimension_context(context)
+            topology_context = self._build_topology_context(service_id)
+            historical_incidents = self._get_historical_incidents(anomalies)
+
+            # Build optimized prompts
+            system_prompt = self._prompt_builder.build_system_prompt()
+            user_prompt = self._prompt_builder.build_user_prompt(
+                anomalies=anomalies,
+                service_context=service_context,
+                anomaly_contexts=anomaly_contexts,
+                dimension_context=dimension_context,
+                topology_context=topology_context,
+                historical_incidents=historical_incidents,
+            )
 
             # Get LLM response
             from nyxai.llm.providers.base import LLMMessage, MessageRole
 
             messages = [
-                LLMMessage(
-                    role=MessageRole.SYSTEM,
-                    content="You are an expert SRE and systems analyst. Analyze the following anomalies and identify root causes.",
-                ),
-                LLMMessage(role=MessageRole.USER, content=prompt),
+                LLMMessage(role=MessageRole.SYSTEM, content=system_prompt),
+                LLMMessage(role=MessageRole.USER, content=user_prompt),
             ]
 
             response = await self._llm_provider.achat(messages)
 
-            # Parse LLM response
-            causes = self._parse_llm_response(response.content, service_id)
+            # Parse LLM response using the optimized parser
+            parsed_result = self._prompt_builder.parse_response(response.content)
 
-            return causes
+            # Transform to standard format
+            return self._transform_llm_result(parsed_result, service_id)
 
         except Exception as e:
-            # Return empty list on LLM error
-            return []
+            # Return empty result on LLM error
+            return {"root_causes": [], "error": str(e)}
 
-    def _build_analysis_prompt(
-        self,
-        anomalies: list[dict[str, Any]],
-        service_id: str,
-    ) -> str:
-        """Build analysis prompt for LLM.
+    def _build_service_context(self, service_id: str) -> ServiceContext:
+        """Build service context for prompt.
 
         Args:
-            anomalies: List of detected anomalies.
-            service_id: ID of the affected service.
+            service_id: Service identifier.
 
         Returns:
-            Analysis prompt.
+            Service context.
         """
-        prompt = f"""Analyze the following anomalies detected in service '{service_id}':
+        service = self._service_graph.get_service(service_id)
 
-Anomalies:
-"""
-        for i, anomaly in enumerate(anomalies, 1):
-            prompt += f"\n{i}. {anomaly.get('title', 'Unknown')}\n"
-            prompt += f"   Description: {anomaly.get('description', 'N/A')}\n"
-            prompt += f"   Severity: {anomaly.get('severity', 'unknown')}\n"
-            prompt += f"   Score: {anomaly.get('score', 0)}\n"
+        if service:
+            # Get dependencies
+            upstream = self._service_graph.get_upstream_services(service_id)
+            dependencies = list(upstream.keys())
 
-        prompt += """
+            return ServiceContext(
+                service_id=service_id,
+                service_name=service.name,
+                service_type=service.service_type.value,
+                environment="prod",  # Could be derived from metadata
+                dependencies=dependencies,
+                recent_deployments=[],  # Could be populated from deployment data
+            )
 
-Please identify the root causes in the following JSON format:
-[
-  {
-    "cause_type": "type of root cause (e.g., resource_exhaustion, dependency_failure, configuration_error)",
-    "confidence": 0.85,
-    "description": "Detailed description of the root cause",
-    "suggested_action": "Suggested remediation action"
-  }
-]
+        return ServiceContext(service_id=service_id)
 
-Provide at most 3 root causes, ordered by confidence (highest first).
-"""
-        return prompt
+    def _build_anomaly_contexts(
+        self, anomalies: list[dict[str, Any]]
+    ) -> list[AnomalyContext]:
+        """Build anomaly contexts for prompt.
 
-    def _parse_llm_response(
-        self,
-        content: str,
-        service_id: str,
+        Args:
+            anomalies: List of anomalies.
+
+        Returns:
+            List of anomaly contexts.
+        """
+        contexts = []
+
+        for anomaly in anomalies:
+            metric_value = anomaly.get("current_value", 0)
+            expected_value = anomaly.get("expected_value", 0)
+
+            # Calculate deviation
+            if expected_value > 0:
+                deviation = ((metric_value - expected_value) / expected_value) * 100
+            else:
+                deviation = 0
+
+            ctx = AnomalyContext(
+                metric_name=anomaly.get("metric_name", "unknown"),
+                metric_value=metric_value,
+                expected_value=expected_value,
+                deviation_percent=deviation,
+                severity=anomaly.get("severity", "medium"),
+                duration_minutes=anomaly.get("duration_minutes", 0),
+                detection_time=anomaly.get("detected_at", ""),
+            )
+            contexts.append(ctx)
+
+        return contexts
+
+    def _build_dimension_context(
+        self, context: AgentContext
+    ) -> DimensionContext | None:
+        """Build dimension attribution context for prompt.
+
+        Args:
+            context: Agent execution context.
+
+        Returns:
+            Dimension context or None.
+        """
+        # Get dimension attribution data from context if available
+        dim_data = context.anomaly_data.get("dimension_attribution")
+
+        if dim_data:
+            return DimensionContext(
+                top_dimensions=dim_data.get("top_contributors", []),
+                dimension_breakdown=dim_data.get("breakdown", {}),
+                comparison_data=dim_data.get("comparison", {}),
+            )
+
+        return None
+
+    def _build_topology_context(self, service_id: str) -> dict[str, Any]:
+        """Build topology context for prompt.
+
+        Args:
+            service_id: Service identifier.
+
+        Returns:
+            Topology context dictionary.
+        """
+        upstream = self._service_graph.get_upstream_services(service_id)
+        downstream = self._service_graph.get_downstream_services(service_id)
+
+        upstream_services = []
+        for uid, hops in upstream.items():
+            svc = self._service_graph.get_service(uid)
+            if svc:
+                upstream_services.append({
+                    "id": uid,
+                    "name": svc.name,
+                    "status": svc.status.value,
+                    "hops": hops,
+                })
+
+        downstream_services = []
+        for did, hops in downstream.items():
+            svc = self._service_graph.get_service(did)
+            if svc:
+                downstream_services.append({
+                    "id": did,
+                    "name": svc.name,
+                    "status": svc.status.value,
+                    "hops": hops,
+                })
+
+        return {
+            "upstream_services": upstream_services,
+            "downstream_services": downstream_services,
+        }
+
+    def _get_historical_incidents(
+        self, anomalies: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
-        """Parse LLM response to extract root causes.
+        """Get similar historical incidents.
 
         Args:
-            content: LLM response content.
-            service_id: Service ID.
+            anomalies: Current anomalies.
 
         Returns:
-            List of root cause candidates.
+            List of historical incidents.
         """
-        import json
-        import re
+        # This could be enhanced to query the knowledge base
+        # For now, return empty list
+        return []
 
-        causes = []
+    def _transform_llm_result(
+        self, parsed_result: dict[str, Any], service_id: str
+    ) -> dict[str, Any]:
+        """Transform parsed LLM result to standard format.
 
-        # Try to extract JSON from response
-        try:
-            # Look for JSON array in the response
-            json_match = re.search(r"\[.*\]", content, re.DOTALL)
-            if json_match:
-                data = json.loads(json_match.group())
-                if isinstance(data, list):
-                    for item in data:
-                        causes.append({
-                            "service_id": service_id,
-                            "service_name": service_id,
-                            "cause_type": item.get("cause_type", "unknown"),
-                            "confidence": item.get("confidence", 0.5),
-                            "description": item.get("description", ""),
-                            "suggested_action": item.get("suggested_action", ""),
-                            "source": "llm_analysis",
-                        })
-        except (json.JSONDecodeError, Exception):
-            # If JSON parsing fails, create a generic cause
-            causes.append({
+        Args:
+            parsed_result: Parsed LLM response.
+            service_id: Service identifier.
+
+        Returns:
+            Standardized result dictionary.
+        """
+        root_causes = []
+
+        # Extract root causes from parsed result
+        causes = parsed_result.get("root_causes", [])
+
+        for cause in causes:
+            root_causes.append({
                 "service_id": service_id,
-                "service_name": service_id,
-                "cause_type": "unknown",
-                "confidence": 0.3,
-                "description": f"LLM analysis: {content[:200]}...",
+                "service_name": cause.get("service_name", service_id),
+                "cause_type": cause.get("cause_type", "unknown"),
+                "confidence": cause.get("confidence", 0.5),
+                "description": cause.get("description", ""),
+                "suggested_action": cause.get("suggested_action", ""),
+                "evidence": cause.get("evidence", []),
+                "prevention": cause.get("prevention", ""),
                 "source": "llm_analysis",
             })
 
-        return causes
+        return {
+            "root_causes": root_causes,
+            "analysis_summary": parsed_result.get("analysis_summary", ""),
+            "impact_assessment": parsed_result.get("impact_assessment", {}),
+            "timeline": parsed_result.get("timeline", []),
+        }
 
     def _merge_causes(
         self,
@@ -360,6 +491,11 @@ Provide at most 3 root causes, ordered by confidence (highest first).
                         existing.get("confidence", 0),
                         llm_cause.get("confidence", 0),
                     )
+                    # Merge evidence
+                    if "evidence" in llm_cause:
+                        existing_evidence = existing.get("evidence", [])
+                        existing_evidence.extend(llm_cause.get("evidence", []))
+                        existing["evidence"] = list(set(existing_evidence))
                     similar_exists = True
                     break
 

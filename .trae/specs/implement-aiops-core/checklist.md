@@ -52,7 +52,7 @@
   - [x] 故障传播分析可定位根因服务
   - [x] 上游/下游服务查询可获取依赖关系
   - [x] 关键路径分析可找出关键调用链
-  - [ ] 维度归因分析可定位异常维度
+  - [x] 维度归因分析可定位异常维度 (src/nyxai/rca/attribution/dimension_attributor.py)
 
 - [x] 自动恢复引擎已实现
   - [x] 策略管理可匹配和执行策略 - src/nyxai/recovery/strategies/
@@ -82,7 +82,12 @@
   - [x] OpenAI Provider 可调用 GPT 模型 - src/nyxai/llm/providers/openai_provider.py
   - [x] Anthropic Provider 可调用 Claude 模型 - src/nyxai/llm/providers/anthropic_provider.py
   - [x] 支持同步/异步调用和流式响应
-  - [ ] 根因分析提示词可生成有效分析
+  - [x] 根因分析提示词可生成有效分析 - src/nyxai/llm/prompts/rca_prompts.py
+    - [x] 支持多种提示词模板 (standard, detailed, technical, executive)
+    - [x] 支持中英文双语输出
+    - [x] 集成维度归因分析上下文
+    - [x] 集成服务拓扑上下文
+    - [x] 结构化 JSON 输出格式
   - [ ] 工具调用框架可执行外部工具
 
 - [x] 知识库已实现

@@ -45,7 +45,7 @@
 - [x] Task 8: 实现根因分析引擎
   - [x] SubTask 8.1: 实现服务拓扑图 (src/nyxai/rca/topology/service_graph.py)
   - [x] SubTask 8.2: 实现故障传播分析
-  - [ ] SubTask 8.3: 实现维度归因分析
+  - [x] SubTask 8.3: 实现维度归因分析 (src/nyxai/rca/attribution/dimension_attributor.py)
 
 - [x] Task 9: 实现自动恢复引擎
   - [x] SubTask 9.1: 实现策略管理 (src/nyxai/recovery/strategies/)
@@ -63,7 +63,7 @@
   - [x] SubTask 11.1: 实现 LLM Provider 抽象 (src/nyxai/llm/providers/)
   - [x] SubTask 11.2: 实现 OpenAI Provider (src/nyxai/llm/providers/openai_provider.py)
   - [x] SubTask 11.3: 实现 Anthropic Provider (src/nyxai/llm/providers/anthropic_provider.py)
-  - [ ] SubTask 11.4: 实现根因分析提示词
+  - [x] SubTask 11.4: 实现根因分析提示词优化 (src/nyxai/llm/prompts/rca_prompts.py)
   - [ ] SubTask 11.5: 实现工具调用框架
 
 - [x] Task 12: 实现知识库
