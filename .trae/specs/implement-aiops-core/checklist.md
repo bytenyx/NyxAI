@@ -60,17 +60,22 @@
   - [x] 扩容策略可处理高负载场景
   - [x] 清理缓存策略可处理缓存问题
   - [x] 熔断策略可处理级联故障
-  - [ ] 风险评估可正确评估操作风险
-  - [ ] 动作执行器可执行恢复动作
+  - [x] 风险评估可正确评估操作风险 - src/nyxai/recovery/risk/assessor.py
+  - [x] 风险评估考虑7个维度：服务关键性、操作影响、失败概率、回滚难度、影响范围、时间、依赖数
+  - [x] 动作执行器可执行恢复动作 - src/nyxai/recovery/executor/executor.py
+  - [x] 执行器支持dry-run模式和回滚
 
 - [x] Agent 编排层已实现
   - [x] Agent 基类定义清晰 - src/nyxai/agents/base.py
   - [x] AgentContext 可在 Agent 间传递上下文
   - [x] AgentResult 可表示执行结果
-  - [ ] Monitor Agent 可检测异常并触发后续流程
-  - [ ] Analyze Agent 可执行根因分析
-  - [ ] Decide Agent 可做出恢复决策
-  - [ ] Execute Agent 可执行恢复动作
+  - [x] Monitor Agent 可检测异常并触发后续流程 - src/nyxai/agents/monitor.py
+  - [x] Analyze Agent 可执行根因分析 - src/nyxai/agents/analyze.py
+  - [x] Analyze Agent 支持拓扑分析和LLM分析
+  - [x] Decide Agent 可做出恢复决策 - src/nyxai/agents/decide.py
+  - [x] Decide Agent 集成知识库搜索
+  - [x] Execute Agent 可执行恢复动作 - src/nyxai/agents/execute.py
+  - [x] Execute Agent 支持审批工作流
 
 - [x] LLM 集成已实现
   - [x] LLM Provider 抽象可切换不同模型 - src/nyxai/llm/providers/base.py
@@ -89,10 +94,22 @@
 
 ## Phase 3: 完善与部署
 
-- [ ] API 和 WebSocket 已完善
-  - [ ] 所有 REST API 端点工作正常
-  - [ ] WebSocket 可实时推送事件
-  - [ ] API 认证和授权机制有效
+- [x] API 和 WebSocket 已完善
+  - [x] 完整的 REST API 端点已实现
+    - [x] 认证端点 - /api/v1/auth/*
+    - [x] 异常管理端点 - /api/v1/anomalies/*
+    - [x] 指标查询端点 - /api/v1/metrics/*
+    - [x] 恢复动作端点 - /api/v1/recovery/*
+    - [x] RCA 端点 - /api/v1/rca/*
+  - [x] WebSocket 实时事件推送已实现 - /ws/events
+    - [x] 支持多种事件类型：异常检测、恢复完成、RCA完成等
+    - [x] 支持订阅/取消订阅特定事件类型
+    - [x] 支持 ping/pong 心跳检测
+  - [x] API 认证和授权机制已实现
+    - [x] JWT Token 认证
+    - [x] API Key 认证
+    - [x] 基于角色的访问控制 (RBAC)
+    - [x] 三种角色：Admin, Operator, Viewer
 
 - [ ] 测试已编写
   - [ ] 单元测试覆盖率 > 80%

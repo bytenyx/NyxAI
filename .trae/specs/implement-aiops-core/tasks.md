@@ -49,15 +49,15 @@
 
 - [x] Task 9: 实现自动恢复引擎
   - [x] SubTask 9.1: 实现策略管理 (src/nyxai/recovery/strategies/)
-  - [ ] SubTask 9.2: 实现风险评估 (src/nyxai/recovery/risk/)
-  - [ ] SubTask 9.3: 实现动作执行器 (src/nyxai/recovery/executor/)
+  - [x] SubTask 9.2: 实现风险评估 (src/nyxai/recovery/risk/assessor.py)
+  - [x] SubTask 9.3: 实现动作执行器 (src/nyxai/recovery/executor/executor.py)
 
 - [x] Task 10: 实现 Agent 编排层
   - [x] SubTask 10.1: 实现 Agent 基类 (src/nyxai/agents/base.py)
-  - [ ] SubTask 10.2: 实现 Monitor Agent
-  - [ ] SubTask 10.3: 实现 Analyze Agent
-  - [ ] SubTask 10.4: 实现 Decide Agent
-  - [ ] SubTask 10.5: 实现 Execute Agent
+  - [x] SubTask 10.2: 实现 Monitor Agent (src/nyxai/agents/monitor.py)
+  - [x] SubTask 10.3: 实现 Analyze Agent (src/nyxai/agents/analyze.py)
+  - [x] SubTask 10.4: 实现 Decide Agent (src/nyxai/agents/decide.py)
+  - [x] SubTask 10.5: 实现 Execute Agent (src/nyxai/agents/execute.py)
 
 - [x] Task 11: 实现 LLM 集成
   - [x] SubTask 11.1: 实现 LLM Provider 抽象 (src/nyxai/llm/providers/)
@@ -72,10 +72,10 @@
 
 ## Phase 3: 完善与部署
 
-- [ ] Task 13: 完善 API 和 WebSocket
-  - [ ] SubTask 13.1: 实现完整的 REST API
-  - [ ] SubTask 13.2: 实现 WebSocket 实时事件推送
-  - [ ] SubTask 13.3: 实现 API 认证和授权
+- [x] Task 13: 完善 API 和 WebSocket
+  - [x] SubTask 13.1: 实现完整的 REST API - 异常、恢复、RCA、认证端点
+  - [x] SubTask 13.2: 实现 WebSocket 实时事件推送 - /ws/events
+  - [x] SubTask 13.3: 实现 API 认证和授权 - JWT + API Key
 
 - [ ] Task 14: 编写测试
   - [ ] SubTask 14.1: 编写单元测试
