@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nyxai
+  labels:
+    app.kubernetes.io/name: nyxai
+    app.kubernetes.io/component: namespace

@@ -77,13 +77,14 @@
   - [x] SubTask 13.2: 实现 WebSocket 实时事件推送 - /ws/events
   - [x] SubTask 13.3: 实现 API 认证和授权 - JWT + API Key
 
-- [ ] Task 14: 编写测试
-  - [ ] SubTask 14.1: 编写单元测试
-  - [ ] SubTask 14.2: 编写集成测试
+- [x] Task 14: 编写测试
+  - [x] SubTask 14.1: 编写单元测试 - tests/unit/detection/
+  - [x] SubTask 14.2: 编写集成测试 - tests/integration/
+  - [x] SubTask 14.3: 配置 pytest 和测试 fixtures - tests/conftest.py
 
-- [ ] Task 15: 部署配置
-  - [ ] SubTask 15.1: 编写 Kubernetes manifests
-  - [ ] SubTask 15.2: 配置 CI/CD
+- [x] Task 15: 部署配置
+  - [x] SubTask 15.1: 编写 Kubernetes manifests - k8s/base/
+  - [x] SubTask 15.2: 配置 CI/CD - .github/workflows/
 
 # Task Dependencies
 

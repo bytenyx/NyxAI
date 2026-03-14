@@ -111,10 +111,39 @@
     - [x] 基于角色的访问控制 (RBAC)
     - [x] 三种角色：Admin, Operator, Viewer
 
-- [ ] 测试已编写
-  - [ ] 单元测试覆盖率 > 80%
-  - [ ] 集成测试通过
+- [x] 测试已编写
+  - [x] 单元测试已编写 - tests/unit/detection/
+    - [x] test_statistical_detector.py - ThreeSigmaDetector 和 EWMADetector 测试
+    - [x] test_anomaly_model.py - Anomaly 模型测试
+  - [x] 集成测试目录已创建 - tests/integration/
+  - [x] pytest fixtures 已配置 - tests/conftest.py
+    - [x] sample_metric_data - 样本指标数据
+    - [x] sample_metric_data_with_anomaly - 带异常的样本数据
+    - [x] sample_anomaly_data - 样本异常数据
+    - [x] sample_service_graph_data - 样本服务图数据
+    - [x] mock_prometheus_response - Mock Prometheus 响应
+    - [x] mock_loki_response - Mock Loki 响应
+    - [x] sample_recovery_action - 样本恢复动作
+    - [x] sample_incident_record - 样本故障记录
 
-- [ ] 部署配置已完成
-  - [ ] Kubernetes manifests 可部署
-  - [ ] CI/CD 流水线可自动构建和部署
+- [x] 部署配置已完成
+  - [x] Kubernetes manifests 已编写 - k8s/base/
+    - [x] namespace.yaml - 命名空间
+    - [x] configmap.yaml - 配置映射
+    - [x] secret.yaml - 密钥
+    - [x] deployment.yaml - 部署
+    - [x] service.yaml - 服务
+    - [x] ingress.yaml - 入口
+    - [x] rbac.yaml - RBAC 权限
+    - [x] hpa.yaml - 水平自动扩缩容
+    - [x] kustomization.yaml - Kustomize 配置
+  - [x] CI/CD 流水线已配置 - .github/workflows/
+    - [x] ci.yml - 持续集成
+      - [x] Lint 检查 (Ruff, MyPy)
+      - [x] 单元测试
+      - [x] 代码覆盖率
+      - [x] Docker 镜像构建
+    - [x] cd.yml - 持续部署
+      - [x] 发布到 GitHub Releases
+      - [x] 部署到 Staging 环境
+      - [x] 部署到 Production 环境

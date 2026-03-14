@@ -1,0 +1,61 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nyxai
+  namespace: nyxai
+  labels:
+    app.kubernetes.io/name: nyxai
+    app.kubernetes.io/component: ingress
+  annotations:
+    # nginx ingress controller annotations
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    # cert-manager for automatic TLS
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+    nginx.ingress.kubernetes.io/limit-connections: "5"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - nyxai.example.com
+      secretName: nyxai-tls
+  rules:
+    - host: nyxai.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nyxai
+                port:
+                  number: 80
+---
+# Alternative: HTTP-only ingress for local development
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nyxai-http
+  namespace: nyxai
+  labels:
+    app.kubernetes.io/name: nyxai
+    app.kubernetes.io/component: ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: nyxai.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nyxai
+                port:
+                  number: 80
