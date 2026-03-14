@@ -37,23 +37,23 @@
 
 ## Phase 2: 核心引擎实现
 
-- [ ] Task 7: 完善异常检测引擎
-  - [ ] SubTask 7.1: 实现 ML 检测引擎 (Isolation Forest, LOF)
-  - [ ] SubTask 7.2: 实现动态阈值算法
-  - [ ] SubTask 7.3: 实现集成检测器
+- [x] Task 7: 完善异常检测引擎
+  - [x] SubTask 7.1: 实现 ML 检测引擎 (Isolation Forest, LOF) - src/nyxai/detection/engines/ml_detector.py
+  - [x] SubTask 7.2: 实现动态阈值算法 - src/nyxai/detection/engines/adaptive_detector.py
+  - [x] SubTask 7.3: 实现集成检测器 - src/nyxai/detection/engines/ensemble_detector.py
 
-- [ ] Task 8: 实现根因分析引擎
-  - [ ] SubTask 8.1: 实现服务拓扑图 (src/nyxai/rca/topology/service_graph.py)
-  - [ ] SubTask 8.2: 实现故障传播分析
+- [x] Task 8: 实现根因分析引擎
+  - [x] SubTask 8.1: 实现服务拓扑图 (src/nyxai/rca/topology/service_graph.py)
+  - [x] SubTask 8.2: 实现故障传播分析
   - [ ] SubTask 8.3: 实现维度归因分析
 
-- [ ] Task 9: 实现自动恢复引擎
-  - [ ] SubTask 9.1: 实现策略管理 (src/nyxai/recovery/strategies/)
+- [x] Task 9: 实现自动恢复引擎
+  - [x] SubTask 9.1: 实现策略管理 (src/nyxai/recovery/strategies/)
   - [ ] SubTask 9.2: 实现风险评估 (src/nyxai/recovery/risk/)
   - [ ] SubTask 9.3: 实现动作执行器 (src/nyxai/recovery/executor/)
 
-- [ ] Task 10: 实现 Agent 编排层
-  - [ ] SubTask 10.1: 实现 Agent 基类 (src/nyxai/agents/base.py)
+- [x] Task 10: 实现 Agent 编排层
+  - [x] SubTask 10.1: 实现 Agent 基类 (src/nyxai/agents/base.py)
   - [ ] SubTask 10.2: 实现 Monitor Agent
   - [ ] SubTask 10.3: 实现 Analyze Agent
   - [ ] SubTask 10.4: 实现 Decide Agent

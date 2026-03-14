@@ -37,23 +37,36 @@
 
 ## Phase 2: 核心引擎实现
 
-- [ ] 异常检测引擎已完善
-  - [ ] ML 检测引擎 (Isolation Forest) 工作正常
-  - [ ] 动态阈值算法可自适应调整
-  - [ ] 集成检测器可综合多算法结果
+- [x] 异常检测引擎已完善
+  - [x] ML 检测引擎 (Isolation Forest) 工作正常 - src/nyxai/detection/engines/ml_detector.py
+  - [x] ML 检测引擎 (LOF) 工作正常 - src/nyxai/detection/engines/ml_detector.py
+  - [x] 动态阈值算法可自适应调整 - src/nyxai/detection/engines/adaptive_detector.py
+  - [x] 分位数检测器可基于百分位数检测异常 - src/nyxai/detection/engines/adaptive_detector.py
+  - [x] 季节性自适应检测器可处理周期性数据 - src/nyxai/detection/engines/adaptive_detector.py
+  - [x] 集成检测器可综合多算法结果 - src/nyxai/detection/engines/ensemble_detector.py
 
-- [ ] 根因分析引擎已实现
-  - [ ] 服务拓扑图可正确构建
-  - [ ] 故障传播分析可定位根因服务
+- [x] 根因分析引擎已实现
+  - [x] 服务拓扑图可正确构建 - src/nyxai/rca/topology/service_graph.py
+  - [x] 服务节点可表示服务状态和指标
+  - [x] 依赖边可表示服务间调用关系
+  - [x] 故障传播分析可定位根因服务
+  - [x] 上游/下游服务查询可获取依赖关系
+  - [x] 关键路径分析可找出关键调用链
   - [ ] 维度归因分析可定位异常维度
 
-- [ ] 自动恢复引擎已实现
-  - [ ] 策略管理可匹配和执行策略
+- [x] 自动恢复引擎已实现
+  - [x] 策略管理可匹配和执行策略 - src/nyxai/recovery/strategies/
+  - [x] 重启服务策略可处理内存泄漏等问题
+  - [x] 扩容策略可处理高负载场景
+  - [x] 清理缓存策略可处理缓存问题
+  - [x] 熔断策略可处理级联故障
   - [ ] 风险评估可正确评估操作风险
   - [ ] 动作执行器可执行恢复动作
 
-- [ ] Agent 编排层已实现
-  - [ ] Agent 基类定义清晰
+- [x] Agent 编排层已实现
+  - [x] Agent 基类定义清晰 - src/nyxai/agents/base.py
+  - [x] AgentContext 可在 Agent 间传递上下文
+  - [x] AgentResult 可表示执行结果
   - [ ] Monitor Agent 可检测异常并触发后续流程
   - [ ] Analyze Agent 可执行根因分析
   - [ ] Decide Agent 可做出恢复决策

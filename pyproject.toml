@@ -59,10 +59,14 @@ dependencies = [
     "torch>=2.5.0",
     "scikit-learn>=1.5.0",
     "transformers>=4.46.0",
-    
+
     # Time Series
     "statsmodels>=0.14.0",
     "prophet>=1.1.5",
+
+    # Graph Analysis
+    "networkx>=3.4.0",
+    "scipy>=1.14.0",
     
     # LLM Integration
     "openai>=1.54.0",
