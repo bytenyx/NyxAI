@@ -1,0 +1,198 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nyxai"
+version = "0.1.0"
+description = "NyxAI - An Agentic AIOps System for Intelligent Anomaly Detection, Root Cause Analysis and Auto Recovery"
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.11"
+authors = [
+    {name = "NyxAI Team"},
+]
+keywords = ["aiops", "anomaly-detection", "root-cause-analysis", "auto-recovery", "llm", "agents"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Monitoring",
+    "Topic :: System :: Systems Administration",
+]
+
+dependencies = [
+    # Web Framework
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "websockets>=14.0",
+    "python-socketio>=5.11.0",
+    
+    # Data Processing
+    "pandas>=2.2.0",
+    "numpy>=1.26.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.6.0",
+    
+    # Database
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "alembic>=1.14.0",
+    "redis>=5.2.0",
+    
+    # Vector Database
+    "pgvector>=0.3.0",
+
+    # Prometheus Stack - 指标观测
+    "prometheus-api-client>=0.5.5",
+    "prometheus-http-client>=1.0.0",
+
+    # Task Queue
+    "celery>=5.4.0",
+    "flower>=2.0.0",
+    
+    # Machine Learning
+    "torch>=2.5.0",
+    "scikit-learn>=1.5.0",
+    "transformers>=4.46.0",
+    
+    # Time Series
+    "statsmodels>=0.14.0",
+    "prophet>=1.1.5",
+    
+    # LLM Integration
+    "openai>=1.54.0",
+    "anthropic>=0.39.0",
+    "langchain>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "langchain-community>=0.3.0",
+    
+    # Metrics & Monitoring
+    "prometheus-client>=0.21.0",
+    "prometheus-fastapi-instrumentator>=7.0.0",
+    
+    # Logging
+    "structlog>=24.4.0",
+    "python-json-logger>=2.0.7",
+    
+    # HTTP Client
+    "httpx>=0.27.0",
+    "aiohttp>=3.11.0",
+    
+    # Utilities
+    "python-dotenv>=1.0.0",
+    "tenacity>=9.0.0",
+    "orjson>=3.10.0",
+    "typer>=0.13.0",
+    "rich>=13.9.0",
+    
+    # Testing
+    "pytest-asyncio>=0.24.0",
+    "factory-boy>=3.3.0",
+    "faker>=33.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-cov>=6.0.0",
+    "pytest-xdist>=3.6.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "pre-commit>=4.0.0",
+    "ipython>=8.29.0",
+    "jupyter>=1.1.0",
+    "notebook>=7.2.0",
+]
+
+[project.scripts]
+nyxai = "nyxai.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nyxai"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "D",   # pydocstyle
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+]
+ignore = [
+    "D100",  # Missing docstring in public module
+    "D104",  # Missing docstring in public package
+    "D107",  # Missing docstring in __init__
+]
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["D", "S"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+    "torch.*",
+    "transformers.*",
+    "sklearn.*",
+    "statsmodels.*",
+    "prophet.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.coverage.run]
+source = ["src/nyxai"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+show_missing = true
+fail_under = 80
