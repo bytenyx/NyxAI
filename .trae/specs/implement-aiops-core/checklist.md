@@ -72,14 +72,20 @@
   - [ ] Decide Agent 可做出恢复决策
   - [ ] Execute Agent 可执行恢复动作
 
-- [ ] LLM 集成已实现
-  - [ ] LLM Provider 可切换不同模型
+- [x] LLM 集成已实现
+  - [x] LLM Provider 抽象可切换不同模型 - src/nyxai/llm/providers/base.py
+  - [x] OpenAI Provider 可调用 GPT 模型 - src/nyxai/llm/providers/openai_provider.py
+  - [x] Anthropic Provider 可调用 Claude 模型 - src/nyxai/llm/providers/anthropic_provider.py
+  - [x] 支持同步/异步调用和流式响应
   - [ ] 根因分析提示词可生成有效分析
   - [ ] 工具调用框架可执行外部工具
 
-- [ ] 知识库已实现
-  - [ ] 故障知识库可存储和检索历史故障
-  - [ ] 向量嵌入和检索可找到相似故障
+- [x] 知识库已实现
+  - [x] 故障知识库可存储和检索历史故障 - src/nyxai/knowledge_base/incident_kb.py
+  - [x] 向量嵌入可生成事件向量表示
+  - [x] 相似度检索可找到相似故障
+  - [x] 支持标签搜索和服务搜索
+  - [x] 支持 JSON 导入/导出
 
 ## Phase 3: 完善与部署
 

@@ -59,14 +59,16 @@
   - [ ] SubTask 10.4: 实现 Decide Agent
   - [ ] SubTask 10.5: 实现 Execute Agent
 
-- [ ] Task 11: 实现 LLM 集成
-  - [ ] SubTask 11.1: 实现 LLM Provider 抽象 (src/nyxai/llm/providers/)
-  - [ ] SubTask 11.2: 实现根因分析提示词
-  - [ ] SubTask 11.3: 实现工具调用框架
+- [x] Task 11: 实现 LLM 集成
+  - [x] SubTask 11.1: 实现 LLM Provider 抽象 (src/nyxai/llm/providers/)
+  - [x] SubTask 11.2: 实现 OpenAI Provider (src/nyxai/llm/providers/openai_provider.py)
+  - [x] SubTask 11.3: 实现 Anthropic Provider (src/nyxai/llm/providers/anthropic_provider.py)
+  - [ ] SubTask 11.4: 实现根因分析提示词
+  - [ ] SubTask 11.5: 实现工具调用框架
 
-- [ ] Task 12: 实现知识库
-  - [ ] SubTask 12.1: 实现故障知识库 (src/nyxai/knowledge_base/incident_kb.py)
-  - [ ] SubTask 12.2: 实现向量嵌入和检索
+- [x] Task 12: 实现知识库
+  - [x] SubTask 12.1: 实现故障知识库 (src/nyxai/knowledge_base/incident_kb.py)
+  - [x] SubTask 12.2: 实现向量嵌入和检索
 
 ## Phase 3: 完善与部署
 
