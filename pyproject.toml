@@ -46,11 +46,13 @@ dependencies = [
     # Database
     "sqlalchemy[asyncio]>=2.0.36",
     "asyncpg>=0.30.0",
+    "aiosqlite>=0.20.0",
     "alembic>=1.14.0",
     "redis>=5.2.0",
     
     # Vector Database
     "pgvector>=0.3.0",
+    "chromadb>=0.5.0",
 
     # Prometheus Stack - 指标观测
     "prometheus-api-client>=0.5.5",

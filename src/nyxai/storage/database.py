@@ -1,10 +1,12 @@
-"""PostgreSQL database connection and session management.
+"""Database connection and session management.
 
-This module provides SQLAlchemy 2.0 async database operations with connection pooling.
+This module provides SQLAlchemy 2.0 async database operations with support for
+both PostgreSQL (external) and SQLite (embedded) databases.
 """
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import text
@@ -30,6 +32,8 @@ class DatabaseManager:
 
     This class handles the lifecycle of the async SQLAlchemy engine and session factory,
     providing connection pooling and session management.
+
+    Supports both PostgreSQL (external) and SQLite (embedded) databases.
 
     Example:
         >>> db_manager = DatabaseManager()
@@ -72,23 +76,70 @@ class DatabaseManager:
             raise RuntimeError("Session maker not initialized. Call initialize() first.")
         return self._session_maker
 
+    def _ensure_sqlite_directory(self, db_url: str) -> None:
+        """Ensure the directory for SQLite database exists.
+
+        Args:
+            db_url: The SQLite database URL.
+        """
+        if db_url.startswith("sqlite+aiosqlite:///"):
+            # Extract path from URL (remove the sqlite+aiosqlite:/// prefix)
+            db_path = db_url.replace("sqlite+aiosqlite:///", "")
+            # Handle both relative and absolute paths
+            if not db_path.startswith("/"):
+                # Relative path
+                db_path = Path(db_path)
+            else:
+                # Absolute path
+                db_path = Path(db_path)
+
+            # Create parent directory if it doesn't exist
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def _get_engine_kwargs(self, db_settings: Any) -> dict[str, Any]:
+        """Get engine creation kwargs based on database type.
+
+        Args:
+            db_settings: Database settings from configuration.
+
+        Returns:
+            Dictionary of kwargs for create_async_engine.
+        """
+        kwargs: dict[str, Any] = {
+            "echo": db_settings.echo,
+            "future": True,
+        }
+
+        if db_settings.is_postgres:
+            # PostgreSQL-specific options
+            kwargs.update({
+                "pool_size": db_settings.pool_size,
+                "max_overflow": db_settings.max_overflow,
+                "pool_timeout": db_settings.pool_timeout,
+                "pool_pre_ping": True,
+            })
+        # SQLite doesn't need connection pooling options
+
+        return kwargs
+
     async def initialize(self) -> None:
         """Initialize the async engine and session maker.
 
-        This method creates the async engine with connection pooling configured
-        from application settings.
+        This method creates the async engine with appropriate configuration
+        based on the database type (PostgreSQL or SQLite).
         """
         settings = get_settings()
         db_settings = settings.db
 
+        # Ensure SQLite directory exists
+        if db_settings.is_sqlite:
+            self._ensure_sqlite_directory(db_settings.url)
+
+        engine_kwargs = self._get_engine_kwargs(db_settings)
+
         self._engine = create_async_engine(
-            str(db_settings.url),
-            echo=db_settings.echo,
-            pool_size=db_settings.pool_size,
-            max_overflow=db_settings.max_overflow,
-            pool_timeout=db_settings.pool_timeout,
-            pool_pre_ping=True,
-            future=True,
+            db_settings.url,
+            **engine_kwargs,
         )
 
         self._session_maker = async_sessionmaker(
@@ -193,22 +244,42 @@ def get_db_manager() -> DatabaseManager:
     return _db_manager
 
 
-# Async session factory for direct use
-AsyncSessionLocal = async_sessionmaker(
-    create_async_engine(
-        str(get_settings().db.url),
-        echo=get_settings().db.echo,
-        pool_size=get_settings().db.pool_size,
-        max_overflow=get_settings().db.max_overflow,
-        pool_timeout=get_settings().db.pool_timeout,
-        pool_pre_ping=True,
-        future=True,
-    ),
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autoflush=False,
-    autocommit=False,
-)
+def _create_async_session_local() -> async_sessionmaker[AsyncSession]:
+    """Create async session factory based on current settings.
+
+    Returns:
+        Configured async_sessionmaker instance.
+    """
+    settings = get_settings()
+    db_settings = settings.db
+
+    engine_kwargs: dict[str, Any] = {
+        "echo": db_settings.echo,
+        "future": True,
+    }
+
+    if db_settings.is_postgres:
+        engine_kwargs.update({
+            "pool_size": db_settings.pool_size,
+            "max_overflow": db_settings.max_overflow,
+            "pool_timeout": db_settings.pool_timeout,
+            "pool_pre_ping": True,
+        })
+
+    return async_sessionmaker(
+        create_async_engine(
+            db_settings.url,
+            **engine_kwargs,
+        ),
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autoflush=False,
+        autocommit=False,
+    )
+
+
+# Async session factory for direct use (lazy initialization)
+AsyncSessionLocal = _create_async_session_local()
 
 
 @asynccontextmanager

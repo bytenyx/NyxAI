@@ -84,7 +84,7 @@ class Anomaly(Base):
         algorithm: The detection algorithm used.
         description: Human-readable description of the anomaly.
         root_cause: Identified root cause (if available).
-        metadata: Additional metadata (JSON).
+        meta_data: Additional metadata (JSON).
         incident_id: Foreign key to associated incident.
         created_at: Timestamp when the record was created.
         updated_at: Timestamp when the record was last updated.
@@ -148,7 +148,8 @@ class Anomaly(Base):
         Text,
         nullable=True,
     )
-    metadata: Mapped[dict[str, Any]] = mapped_column(
+    meta_data: Mapped[dict[str, Any]] = mapped_column(
+        "metadata",
         JSON,
         default=dict,
     )
@@ -204,7 +205,7 @@ class Incident(Base):
         root_cause: Identified root cause.
         impact_summary: Summary of the impact.
         affected_services: List of affected services (JSON).
-        metadata: Additional metadata (JSON).
+        meta_data: Additional metadata (JSON).
         created_at: Timestamp when the record was created.
         updated_at: Timestamp when the record was last updated.
     """
@@ -263,7 +264,8 @@ class Incident(Base):
         JSON,
         default=list,
     )
-    metadata: Mapped[dict[str, Any]] = mapped_column(
+    meta_data: Mapped[dict[str, Any]] = mapped_column(
+        "metadata",
         JSON,
         default=dict,
     )
@@ -320,7 +322,7 @@ class RecoveryAction(Base):
         approved_by: User/system that approved the action.
         execution_logs: Execution logs (JSON).
         rollback_action: Reference to rollback action if applicable.
-        metadata: Additional metadata (JSON).
+        meta_data: Additional metadata (JSON).
         created_at: Timestamp when the record was created.
         updated_at: Timestamp when the record was last updated.
     """
@@ -386,7 +388,8 @@ class RecoveryAction(Base):
         ForeignKey("recovery_actions.id", ondelete="SET NULL"),
         nullable=True,
     )
-    metadata: Mapped[dict[str, Any]] = mapped_column(
+    meta_data: Mapped[dict[str, Any]] = mapped_column(
+        "metadata",
         JSON,
         default=dict,
     )

@@ -13,18 +13,33 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class DatabaseSettings(BaseSettings):
-    """Database connection settings."""
+    """Database connection settings.
+
+    Supports both PostgreSQL (external) and SQLite (embedded) databases.
+    For SQLite, set NYX_DB_URL to "sqlite+aiosqlite:///path/to/db.sqlite"
+    or use the default embedded database at ./data/nyxai.db
+    """
 
     model_config = SettingsConfigDict(env_prefix="NYX_DB_")
 
-    url: PostgresDsn = Field(
-        default="postgresql+asyncpg://postgres:postgres@localhost:5432/nyxai",
-        description="PostgreSQL connection URL",
+    url: str = Field(
+        default="sqlite+aiosqlite:///./data/nyxai.db",
+        description="Database connection URL (PostgreSQL or SQLite)",
     )
     echo: bool = Field(default=False, description="Enable SQL echo logging")
-    pool_size: int = Field(default=10, ge=1, description="Connection pool size")
-    max_overflow: int = Field(default=20, ge=0, description="Max overflow connections")
-    pool_timeout: int = Field(default=30, ge=1, description="Pool timeout in seconds")
+    pool_size: int = Field(default=10, ge=1, description="Connection pool size (PostgreSQL only)")
+    max_overflow: int = Field(default=20, ge=0, description="Max overflow connections (PostgreSQL only)")
+    pool_timeout: int = Field(default=30, ge=1, description="Pool timeout in seconds (PostgreSQL only)")
+
+    @property
+    def is_sqlite(self) -> bool:
+        """Check if using SQLite database."""
+        return "sqlite" in self.url.lower()
+
+    @property
+    def is_postgres(self) -> bool:
+        """Check if using PostgreSQL database."""
+        return "postgres" in self.url.lower()
 
 
 class RedisSettings(BaseSettings):
@@ -128,6 +143,36 @@ class LoggingSettings(BaseSettings):
     backup_count: int = Field(default=5, ge=0, description="Number of backup files to keep")
 
 
+class VectorStoreSettings(BaseSettings):
+    """Vector store (ChromaDB) settings for embedded vector database."""
+
+    model_config = SettingsConfigDict(env_prefix="NYX_VECTOR_")
+
+    enabled: bool = Field(
+        default=True,
+        description="Enable embedded vector store",
+    )
+    persist_directory: str = Field(
+        default="./data/vector_db",
+        description="Directory to persist vector database",
+    )
+    collection_name: str = Field(
+        default="incidents",
+        description="Name of the vector collection",
+    )
+    similarity_threshold: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Similarity threshold for vector search",
+    )
+    max_results: int = Field(
+        default=5,
+        ge=1,
+        description="Maximum number of vector search results",
+    )
+
+
 class AnomalyDetectionSettings(BaseSettings):
     """Anomaly detection algorithm settings."""
 
@@ -195,6 +240,7 @@ class Settings(BaseSettings):
     prometheus: PrometheusSettings = Field(default_factory=PrometheusSettings)
     celery: CelerySettings = Field(default_factory=CelerySettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
+    vector: VectorStoreSettings = Field(default_factory=VectorStoreSettings)
     anomaly: AnomalyDetectionSettings = Field(default_factory=AnomalyDetectionSettings)
 
     @field_validator("secret_key")

@@ -1,7 +1,7 @@
 """Incident Knowledge Base for NyxAI.
 
 This module provides storage and retrieval of historical incidents
-with vector embedding support for similarity search.
+with vector embedding support for similarity search using embedded ChromaDB.
 """
 
 from __future__ import annotations
@@ -14,6 +14,12 @@ from typing import Any, Protocol
 
 import numpy as np
 from pydantic import BaseModel, Field
+
+from nyxai.storage.vector_store import (
+    EmbeddedVectorStore,
+    VectorStoreConfig,
+    get_vector_store,
+)
 
 
 class EmbeddingProvider(Protocol):
@@ -50,7 +56,7 @@ class IncidentRecord:
         embedding: Vector embedding of the incident.
         created_at: Incident creation timestamp.
         resolved_at: Incident resolution timestamp.
-        metadata: Additional metadata.
+        meta_data: Additional metadata.
     """
 
     id: str
@@ -67,7 +73,7 @@ class IncidentRecord:
     embedding: list[float] | None = None
     created_at: datetime = field(default_factory=datetime.utcnow)
     resolved_at: datetime | None = None
-    metadata: dict[str, Any] = field(default_factory=dict)
+    meta_data: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation.
@@ -90,7 +96,7 @@ class IncidentRecord:
             "embedding": self.embedding,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
-            "metadata": self.metadata,
+            "meta_data": self.meta_data,
         }
 
     @classmethod
@@ -126,7 +132,7 @@ class IncidentRecord:
             embedding=data.get("embedding"),
             created_at=created_at or datetime.utcnow(),
             resolved_at=resolved_at,
-            metadata=data.get("metadata", {}),
+            meta_data=data.get("meta_data", {}),
         )
 
     def generate_embedding_text(self) -> str:
@@ -146,6 +152,72 @@ class IncidentRecord:
         ]
         return "\n".join(parts)
 
+    def to_vector_metadata(self) -> dict[str, Any]:
+        """Convert to metadata format for vector store.
+
+        Returns:
+            Dictionary suitable for vector store metadata.
+        """
+        return {
+            "id": self.id,
+            "title": self.title,
+            "description": self.description,
+            "service_id": self.service_id,
+            "anomaly_type": self.anomaly_type,
+            "root_cause": self.root_cause,
+            "solution": self.solution,
+            "severity": self.severity,
+            "status": self.status,
+            "tags": self.tags,
+            "metrics": self.metrics,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
+            "meta_data": self.meta_data,
+        }
+
+    @classmethod
+    def from_vector_metadata(
+        cls,
+        id: str,
+        metadata: dict[str, Any],
+        embedding: list[float] | None = None,
+    ) -> IncidentRecord:
+        """Create an IncidentRecord from vector store metadata.
+
+        Args:
+            id: Incident ID.
+            metadata: Metadata from vector store.
+            embedding: Optional embedding vector.
+
+        Returns:
+            IncidentRecord instance.
+        """
+        created_at = metadata.get("created_at")
+        if created_at and isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at)
+
+        resolved_at = metadata.get("resolved_at")
+        if resolved_at and isinstance(resolved_at, str):
+            resolved_at = datetime.fromisoformat(resolved_at)
+
+        return cls(
+            id=id,
+            title=metadata.get("title", ""),
+            description=metadata.get("description", ""),
+            service_id=metadata.get("service_id", ""),
+            anomaly_type=metadata.get("anomaly_type", ""),
+            root_cause=metadata.get("root_cause", ""),
+            solution=metadata.get("solution", ""),
+            severity=metadata.get("severity", "medium"),
+            status=metadata.get("status", "resolved"),
+            metrics=metadata.get("metrics", {}),
+            tags=metadata.get("tags", []),
+            embedding=embedding,
+            created_at=created_at or datetime.utcnow(),
+            resolved_at=resolved_at,
+            meta_data=metadata.get("meta_data", {}),
+        )
+
 
 class KnowledgeBaseConfig(BaseModel):
     """Configuration for Incident Knowledge Base.
@@ -155,6 +227,8 @@ class KnowledgeBaseConfig(BaseModel):
         max_results: Maximum number of results to return.
         enable_embedding: Whether to use vector embeddings.
         embedding_model: Model to use for embeddings.
+        use_vector_store: Whether to use embedded vector store.
+        vector_store_config: Configuration for vector store.
     """
 
     similarity_threshold: float = Field(
@@ -164,6 +238,12 @@ class KnowledgeBaseConfig(BaseModel):
     enable_embedding: bool = Field(default=True, description="Enable embeddings")
     embedding_model: str = Field(
         default="text-embedding-3-small", description="Embedding model"
+    )
+    use_vector_store: bool = Field(
+        default=True, description="Use embedded vector store (ChromaDB)"
+    )
+    vector_store_config: VectorStoreConfig | None = Field(
+        default=None, description="Vector store configuration"
     )
 
 
@@ -175,7 +255,8 @@ class IncidentKnowledgeBase:
 
     Attributes:
         config: Knowledge base configuration.
-        _records: In-memory storage of incident records.
+        _records: In-memory storage of incident records (fallback mode).
+        _vector_store: Embedded vector store for persistence.
         _embedding_provider: Provider for generating embeddings.
     """
 
@@ -183,16 +264,26 @@ class IncidentKnowledgeBase:
         self,
         config: KnowledgeBaseConfig | None = None,
         embedding_provider: EmbeddingProvider | None = None,
+        vector_store: EmbeddedVectorStore | None = None,
     ) -> None:
         """Initialize the knowledge base.
 
         Args:
             config: Knowledge base configuration. Uses defaults if None.
             embedding_provider: Provider for generating embeddings.
+            vector_store: Optional vector store instance.
         """
         self.config = config or KnowledgeBaseConfig()
         self._records: dict[str, IncidentRecord] = {}
         self._embedding_provider = embedding_provider
+        self._vector_store = vector_store
+
+        # Initialize vector store if enabled and not provided
+        if self.config.use_vector_store and self._vector_store is None:
+            self._vector_store = EmbeddedVectorStore(
+                self.config.vector_store_config or VectorStoreConfig()
+            )
+            self._vector_store.initialize()
 
     async def add_incident(
         self,
@@ -217,7 +308,18 @@ class IncidentKnowledgeBase:
                 # Generate simple hash-based embedding as fallback
                 incident.embedding = self._generate_simple_embedding(incident)
 
-        self._records[incident.id] = incident
+        # Store in vector store if enabled
+        if self.config.use_vector_store and self._vector_store is not None:
+            self._vector_store.add(
+                id=incident.id,
+                embedding=incident.embedding or self._generate_simple_embedding(incident),
+                metadata=incident.to_vector_metadata(),
+                document=incident.generate_embedding_text(),
+            )
+        else:
+            # Fallback to in-memory storage
+            self._records[incident.id] = incident
+
         return incident
 
     def get_incident(self, incident_id: str) -> IncidentRecord | None:
@@ -229,6 +331,17 @@ class IncidentKnowledgeBase:
         Returns:
             Incident record if found, None otherwise.
         """
+        # Try vector store first if enabled
+        if self.config.use_vector_store and self._vector_store is not None:
+            result = self._vector_store.get(incident_id)
+            if result:
+                embedding, metadata = result
+                return IncidentRecord.from_vector_metadata(
+                    incident_id, metadata, embedding
+                )
+            return None
+
+        # Fallback to in-memory storage
         return self._records.get(incident_id)
 
     def update_incident(
@@ -245,13 +358,27 @@ class IncidentKnowledgeBase:
         Returns:
             Updated incident record if found, None otherwise.
         """
-        incident = self._records.get(incident_id)
+        # Get existing incident
+        incident = self.get_incident(incident_id)
         if not incident:
             return None
 
+        # Update fields
         for key, value in updates.items():
             if hasattr(incident, key):
                 setattr(incident, key, value)
+
+        # Update in vector store if enabled
+        if self.config.use_vector_store and self._vector_store is not None:
+            self._vector_store.update(
+                id=incident_id,
+                embedding=incident.embedding,
+                metadata=incident.to_vector_metadata(),
+                document=incident.generate_embedding_text(),
+            )
+        else:
+            # Update in-memory storage
+            self._records[incident_id] = incident
 
         return incident
 
@@ -264,10 +391,13 @@ class IncidentKnowledgeBase:
         Returns:
             True if deleted, False if not found.
         """
-        if incident_id in self._records:
-            del self._records[incident_id]
-            return True
-        return False
+        if self.config.use_vector_store and self._vector_store is not None:
+            return self._vector_store.delete(incident_id)
+        else:
+            if incident_id in self._records:
+                del self._records[incident_id]
+                return True
+            return False
 
     async def search_similar(
         self,
@@ -301,7 +431,23 @@ class IncidentKnowledgeBase:
             else:
                 query_embedding = self._generate_simple_embedding_from_text(query)
 
-        # Calculate similarities
+        # Use vector store if enabled
+        if self.config.use_vector_store and self._vector_store is not None:
+            matches = self._vector_store.search(
+                query_embedding=query_embedding,
+                top_k=top_k,
+                threshold=threshold,
+                filters=filters,
+            )
+
+            results: list[tuple[IncidentRecord, float]] = []
+            for id, similarity, metadata in matches:
+                incident = IncidentRecord.from_vector_metadata(id, metadata)
+                results.append((incident, similarity))
+
+            return results
+
+        # Fallback to in-memory search
         results = []
         for incident in self._records.values():
             # Apply filters if provided
@@ -337,13 +483,33 @@ class IncidentKnowledgeBase:
             List of matching incidents.
         """
         results = []
-        for incident in self._records.values():
-            if match_all:
-                if all(tag in incident.tags for tag in tags):
-                    results.append(incident)
-            else:
-                if any(tag in incident.tags for tag in tags):
-                    results.append(incident)
+
+        if self.config.use_vector_store and self._vector_store is not None:
+            # For vector store, we need to search all and filter
+            # This is a simple implementation - could be optimized with metadata filtering
+            all_results = self._vector_store.search(
+                query_embedding=[1.0] * 128,  # Dummy embedding to get all
+                top_k=10000,
+                threshold=0.0,
+            )
+            for id, _, metadata in all_results:
+                incident_tags = metadata.get("tags", [])
+                if match_all:
+                    if all(tag in incident_tags for tag in tags):
+                        results.append(IncidentRecord.from_vector_metadata(id, metadata))
+                else:
+                    if any(tag in incident_tags for tag in tags):
+                        results.append(IncidentRecord.from_vector_metadata(id, metadata))
+        else:
+            # In-memory search
+            for incident in self._records.values():
+                if match_all:
+                    if all(tag in incident.tags for tag in tags):
+                        results.append(incident)
+                else:
+                    if any(tag in incident.tags for tag in tags):
+                        results.append(incident)
+
         return results
 
     def search_by_service(
@@ -361,10 +527,27 @@ class IncidentKnowledgeBase:
             List of matching incidents.
         """
         results = []
-        for incident in self._records.values():
-            if incident.service_id == service_id:
-                if anomaly_type is None or incident.anomaly_type == anomaly_type:
-                    results.append(incident)
+
+        if self.config.use_vector_store and self._vector_store is not None:
+            filters = {"service_id": service_id}
+            if anomaly_type:
+                filters["anomaly_type"] = anomaly_type
+
+            all_results = self._vector_store.search(
+                query_embedding=[1.0] * 128,  # Dummy embedding
+                top_k=10000,
+                threshold=0.0,
+                filters=filters,
+            )
+            for id, _, metadata in all_results:
+                results.append(IncidentRecord.from_vector_metadata(id, metadata))
+        else:
+            # In-memory search
+            for incident in self._records.values():
+                if incident.service_id == service_id:
+                    if anomaly_type is None or incident.anomaly_type == anomaly_type:
+                        results.append(incident)
+
         return results
 
     def get_statistics(self) -> dict[str, Any]:
@@ -373,6 +556,19 @@ class IncidentKnowledgeBase:
         Returns:
             Dictionary with statistics.
         """
+        if self.config.use_vector_store and self._vector_store is not None:
+            total = self._vector_store.count()
+            # For detailed stats, we'd need to scan all records
+            # This is a simplified version
+            return {
+                "total_incidents": total,
+                "by_service": {},
+                "by_anomaly_type": {},
+                "by_severity": {},
+                "storage_type": "vector_store",
+            }
+
+        # In-memory statistics
         total = len(self._records)
         if total == 0:
             return {
@@ -380,6 +576,7 @@ class IncidentKnowledgeBase:
                 "by_service": {},
                 "by_anomaly_type": {},
                 "by_severity": {},
+                "storage_type": "memory",
             }
 
         by_service: dict[str, int] = {}
@@ -398,6 +595,7 @@ class IncidentKnowledgeBase:
             "by_service": by_service,
             "by_anomaly_type": by_anomaly_type,
             "by_severity": by_severity,
+            "storage_type": "memory",
         }
 
     def _matches_filters(
@@ -496,7 +694,10 @@ class IncidentKnowledgeBase:
 
     def clear(self) -> None:
         """Clear all records from the knowledge base."""
-        self._records.clear()
+        if self.config.use_vector_store and self._vector_store is not None:
+            self._vector_store.clear()
+        else:
+            self._records.clear()
 
     def export_to_json(self) -> str:
         """Export all records to JSON.
@@ -504,6 +705,11 @@ class IncidentKnowledgeBase:
         Returns:
             JSON string of all records.
         """
+        if self.config.use_vector_store and self._vector_store is not None:
+            # For vector store, we'd need to implement a scan operation
+            # This is a placeholder
+            return json.dumps({"note": "Export from vector store not yet implemented"})
+
         records = [record.to_dict() for record in self._records.values()]
         return json.dumps(records, indent=2, default=str)
 
@@ -519,7 +725,8 @@ class IncidentKnowledgeBase:
         records = json.loads(json_data)
         count = 0
         for record_data in records:
-            incident = IncidentRecord.from_dict(record_data)
-            await self.add_incident(incident, generate_embedding=False)
-            count += 1
+            if isinstance(record_data, dict) and "id" in record_data:
+                incident = IncidentRecord.from_dict(record_data)
+                await self.add_incident(incident, generate_embedding=False)
+                count += 1
         return count
