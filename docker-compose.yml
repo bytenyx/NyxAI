@@ -1,5 +1,17 @@
-# NyxAI Docker Compose Configuration
+# NyxAI Docker Compose Configuration - Full Mode with PostgreSQL
 # Version: 3.8+
+#
+# This configuration includes all external services:
+#   - PostgreSQL with pgvector
+#   - Redis
+#   - Prometheus
+#   - Grafana
+#   - Loki
+#
+# For a simplified embedded mode (SQLite + ChromaDB), use:
+#   docker-compose -f docker-compose.embedded.yml up -d
+#
+# Version: 3.8
 
 version: "3.8"
 

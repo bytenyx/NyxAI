@@ -4,7 +4,7 @@
 # =============================================================================
 # Stage 1: Builder
 # =============================================================================
-FROM alibaba-cloud-linux-3-registry.cn-hangzhou.cr.aliyuncs.com/alinux3/python:3.11.1 AS builder
+FROM docker.xuanyuan.me/python:3.11-slim AS builder
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -38,7 +38,7 @@ RUN pip install --no-cache-dir -e . && \
 # =============================================================================
 # Stage 2: Production
 # =============================================================================
-FROM alibaba-cloud-linux-3-registry.cn-hangzhou.cr.aliyuncs.com/alinux3/python:3.11.1 AS production
+FROM docker.xuanyuan.me/python:3.11-slim AS production
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \

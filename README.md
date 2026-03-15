@@ -50,7 +50,9 @@ NyxAI 是一个智能运维系统（Agentic AIOps System），实现异常智能
 - Docker & Docker Compose
 - Make (可选)
 
-### 本地开发
+### 本地开发（推荐 - 嵌入式数据库模式）
+
+**方式一：使用启动脚本（最简单）**
 
 1. 克隆仓库
 ```bash
@@ -58,21 +60,58 @@ git clone https://github.com/your-org/nyxai.git
 cd nyxai
 ```
 
-2. 配置环境变量
+2. 安装依赖
 ```bash
-cp deployments/docker/.env.example .env
-# 编辑 .env 文件，配置必要的 API 密钥和连接信息
+pip install -e ".[dev]"
 ```
 
-3. 启动服务
+3. 配置环境变量
 ```bash
+cp .env.local.example .env.local
+# 编辑 .env.local 文件，设置你的 OPENAI_API_KEY
+```
+
+4. 启动服务
+```bash
+# Windows
+python scripts/dev-start.py
+# 或带自动重载
+python scripts/dev-start.py --reload
+
+# 或使用批处理脚本
+scripts\dev-start.bat
+scripts\dev-start.bat --reload
+
+# 或使用 PowerShell
+.\scripts\dev-start.ps1 -Reload
+```
+
+5. 访问服务
+- API 文档: http://localhost:8000/docs
+- Health Check: http://localhost:8000/health
+
+**方式二：使用 Docker Compose（嵌入式模式）**
+
+```bash
+# 使用嵌入式数据库配置（无需 PostgreSQL/Redis）
+cp .env.embedded.example .env
+docker-compose -f docker-compose.embedded.yml up -d
+```
+
+**方式三：使用 Docker Compose（完整模式）**
+
+```bash
+# 使用完整配置（需要 PostgreSQL + Redis）
+cp deployments/docker/.env.example .env
 docker-compose up -d
 ```
 
-4. 访问服务
-- API 文档: http://localhost:8000/docs
-- Grafana: http://localhost:3000
-- Prometheus: http://localhost:9090
+### 开发特性
+
+- **嵌入式数据库**: 使用 SQLite + ChromaDB，无需安装 PostgreSQL/Redis
+- **自动重载**: 代码修改后自动重启服务
+- **本地数据**: 所有数据存储在 `./data/` 目录，可随时删除重置
+- **调试模式**: 默认启用 DEBUG，显示详细的错误信息
 
 ### API 端点
 

@@ -98,7 +98,7 @@ async def query_metrics_range(
     query: Annotated[str, Query(..., description="PromQL query string", min_length=1)],
     start: Annotated[datetime, Query(..., description="Start time for the query range")],
     end: Annotated[datetime, Query(..., description="End time for the query range")],
-    step: Annotated[str, Query(description="Query resolution step width", default="15s")] = "15s",
+    step: Annotated[str, Query(description="Query resolution step width")] = "15s",
 ) -> QueryRangeResponse:
     """Execute a range PromQL query.
 
