@@ -1,0 +1,300 @@
+{
+  "app": {
+    "name": "NyxAI",
+    "title": "AIOps Intelligent Operations Platform",
+    "slogan": "Intelligent operations for system stability"
+  },
+  "common": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "reset": "Reset",
+    "refresh": "Refresh",
+    "loading": "Loading...",
+    "submit": "Submit",
+    "close": "Close",
+    "back": "Back",
+    "view": "View",
+    "action": "Action",
+    "status": "Status",
+    "time": "Time",
+    "date": "Date",
+    "all": "All",
+    "yes": "Yes",
+    "no": "No",
+    "success": "Success",
+    "error": "Error",
+    "warning": "Warning",
+    "info": "Info"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "anomalies": "Anomalies",
+    "metrics": "Metrics",
+    "rca": "Root Cause Analysis",
+    "recovery": "Recovery",
+    "settings": "Settings"
+  },
+  "login": {
+    "title": "Login",
+    "username": "Username",
+    "password": "Password",
+    "remember": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "submit": "Login",
+    "success": "Login successful",
+    "error": "Login failed, please check username and password",
+    "defaultAccount": "Default: admin / admin"
+  },
+  "user": {
+    "profile": "Profile",
+    "logout": "Logout",
+    "logoutSuccess": "Logged out successfully",
+    "role": {
+      "admin": "Admin",
+      "operator": "Operator",
+      "viewer": "Viewer"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "stats": {
+      "totalAnomalies": "Total Anomalies",
+      "openAnomalies": "Open Anomalies",
+      "criticalAnomalies": "Critical Anomalies",
+      "recoverySuccessRate": "Recovery Success Rate"
+    },
+    "trend": {
+      "title": "Anomaly Trend (Last 7 Days)",
+      "anomalyCount": "Anomaly Count"
+    },
+    "recentAnomalies": "Recent Anomalies",
+    "viewAll": "View All"
+  },
+  "anomaly": {
+    "title": "Anomaly Management",
+    "detail": "Anomaly Detail",
+    "list": "Anomaly List",
+    "fields": {
+      "title": "Title",
+      "service": "Service",
+      "metric": "Metric",
+      "currentValue": "Current Value",
+      "expectedValue": "Expected Value",
+      "severity": "Severity",
+      "status": "Status",
+      "detectedAt": "Detected At",
+      "resolvedAt": "Resolved At",
+      "acknowledgedBy": "Acknowledged By",
+      "description": "Description"
+    },
+    "severity": {
+      "critical": "Critical",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "status": {
+      "open": "Open",
+      "acknowledged": "Acknowledged",
+      "resolved": "Resolved",
+      "ignored": "Ignored"
+    },
+    "actions": {
+      "acknowledge": "Acknowledge",
+      "resolve": "Resolve",
+      "ignore": "Ignore",
+      "confirmAcknowledge": "Acknowledge Anomaly",
+      "confirmResolve": "Resolve Anomaly",
+      "confirmIgnore": "Ignore Anomaly",
+      "acknowledgeSuccess": "Anomaly acknowledged",
+      "resolveSuccess": "Anomaly resolved",
+      "ignoreSuccess": "Anomaly ignored"
+    }
+  },
+  "metrics": {
+    "title": "Metrics Monitoring",
+    "query": {
+      "title": "Metrics Query",
+      "promql": "PromQL Query",
+      "timeRange": "Time Range",
+      "step": "Step (seconds)",
+      "submit": "Query",
+      "export": "Export CSV",
+      "placeholder": "Enter PromQL query, e.g.: up"
+    },
+    "result": "Query Result",
+    "quickQueries": "Quick Queries",
+    "queries": {
+      "serviceStatus": "Service Status",
+      "cpuUsage": "CPU Usage",
+      "memoryUsage": "Memory Usage",
+      "diskUsage": "Disk Usage",
+      "networkReceive": "Network Receive",
+      "networkTransmit": "Network Transmit"
+    },
+    "step": {
+      "15s": "15s",
+      "30s": "30s",
+      "1m": "1m",
+      "5m": "5m",
+      "15m": "15m"
+    }
+  },
+  "rca": {
+    "title": "Root Cause Analysis",
+    "detail": "RCA Detail",
+    "fields": {
+      "id": "Analysis ID",
+      "anomalyId": "Anomaly ID",
+      "rootCause": "Root Cause",
+      "confidence": "Confidence",
+      "createdAt": "Analysis Time",
+      "llmAnalysis": "LLM Analysis"
+    },
+    "serviceGraph": "Service Graph",
+    "dimensionAttribution": "Dimension Attribution",
+    "triggerAnalysis": "Trigger Analysis",
+    "triggerSuccess": "Analysis triggered successfully",
+    "triggerError": "Failed to trigger analysis",
+    "nodes": {
+      "latency": "Latency",
+      "errorRate": "Error Rate"
+    }
+  },
+  "recovery": {
+    "title": "Recovery Operations",
+    "detail": "Recovery Detail",
+    "strategies": "Recovery Strategies",
+    "actions": "Recovery Actions",
+    "fields": {
+      "id": "Action ID",
+      "anomalyId": "Anomaly ID",
+      "strategy": "Strategy",
+      "status": "Status",
+      "params": "Parameters",
+      "result": "Result",
+      "error": "Error",
+      "executedBy": "Executed By",
+      "executedAt": "Executed At",
+      "completedAt": "Completed At",
+      "approvedBy": "Approved By"
+    },
+    "status": {
+      "pending": "Pending",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "riskLevel": {
+      "L1": "L1 - Low Risk",
+      "L2": "L2 - Medium Risk",
+      "L3": "L3 - High Risk",
+      "L4": "L4 - Critical Risk"
+    },
+    "actions": {
+      "execute": "Execute",
+      "approve": "Approve",
+      "cancel": "Cancel",
+      "confirmApprove": "Approve Execution",
+      "confirmCancel": "Cancel Operation",
+      "approveSuccess": "Approved",
+      "cancelSuccess": "Cancelled",
+      "executeSuccess": "Recovery action executed"
+    },
+    "logs": "Execution Logs"
+  },
+  "settings": {
+    "title": "System Settings",
+    "tabs": {
+      "general": "General",
+      "users": "User Management",
+      "notifications": "Notifications",
+      "security": "Security"
+    },
+    "general": {
+      "systemName": "System Name",
+      "timezone": "Timezone",
+      "language": "Language",
+      "autoRefresh": "Auto Refresh",
+      "refreshInterval": "Refresh Interval (seconds)",
+      "saveSuccess": "Settings saved"
+    },
+    "language": {
+      "zhCN": "简体中文",
+      "enUS": "English"
+    },
+    "timezone": {
+      "shanghai": "Asia/Shanghai",
+      "tokyo": "Asia/Tokyo",
+      "newYork": "America/New_York",
+      "london": "Europe/London",
+      "utc": "UTC"
+    },
+    "refreshInterval": {
+      "10s": "10s",
+      "30s": "30s",
+      "1m": "1m",
+      "5m": "5m"
+    }
+  },
+  "userManagement": {
+    "title": "User Management",
+    "addUser": "Add User",
+    "editUser": "Edit User",
+    "fields": {
+      "username": "Username",
+      "email": "Email",
+      "role": "Role",
+      "password": "Password",
+      "createdAt": "Created At"
+    },
+    "createSuccess": "User created",
+    "updateSuccess": "User updated",
+    "deleteSuccess": "User deleted",
+    "deleteConfirm": "Are you sure to delete this user?",
+    "passwordPlaceholder": "Default: 123456"
+  },
+  "notifications": {
+    "title": "Notification Settings",
+    "email": {
+      "enabled": "Email Notifications",
+      "server": "Email Server"
+    },
+    "webhook": {
+      "enabled": "Webhook Notifications",
+      "url": "Webhook URL"
+    },
+    "sms": {
+      "enabled": "SMS Notifications"
+    },
+    "events": {
+      "anomaly": "Anomaly Detection Notifications",
+      "recovery": "Recovery Completion Notifications"
+    },
+    "saveSuccess": "Notification settings saved"
+  },
+  "security": {
+    "title": "Security Settings",
+    "minPasswordLength": "Minimum Password Length",
+    "maxLoginAttempts": "Max Login Attempts",
+    "sessionTimeout": "Session Timeout (minutes)",
+    "enable2FA": "Enable Two-Factor Authentication",
+    "saveSuccess": "Security settings saved"
+  },
+  "websocket": {
+    "connected": "WebSocket connected",
+    "disconnected": "WebSocket disconnected",
+    "reconnecting": "Reconnecting..."
+  },
+  "errors": {
+    "fetchFailed": "Failed to fetch data",
+    "operationFailed": "Operation failed",
+    "unknownError": "Unknown error"
+  }
+}

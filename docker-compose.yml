@@ -17,6 +17,22 @@ version: "3.8"
 
 services:
   # ===========================================================================
+  # NyxAI Frontend
+  # ===========================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nyxai-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    networks:
+      - nyxai_network
+    depends_on:
+      - nyxai
+
+  # ===========================================================================
   # NyxAI Application
   # ===========================================================================
   nyxai:

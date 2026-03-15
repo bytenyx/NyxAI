@@ -1,0 +1,43 @@
+.container {
+  padding: 0;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+}
+
+.pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 4px;
+  max-height: 300px;
+  overflow: auto;
+}
+
+.strategyItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.strategyItem:last-child {
+  border-bottom: none;
+}
+
+.strategyInfo {
+  flex: 1;
+  margin-right: 12px;
+}
+
+.strategyInfo p {
+  margin: 4px 0;
+  color: #666;
+  font-size: 12px;
+}

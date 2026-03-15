@@ -1,0 +1,11 @@
+.filterRow {
+  margin-bottom: 16px;
+}
+
+.tableRow {
+  cursor: pointer;
+}
+
+.tableRow:hover {
+  background-color: #f5f5f5;
+}
