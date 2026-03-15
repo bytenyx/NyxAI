@@ -93,8 +93,8 @@ const DashboardPage = () => {
     },
     {
       title: t('anomaly.fields.detectedAt'),
-      dataIndex: 'detectedAt',
-      key: 'detectedAt',
+      dataIndex: 'detected_at',
+      key: 'detected_at',
       render: (time: string) => dayjs(time).format('MM-DD HH:mm'),
     },
   ]
@@ -144,7 +144,7 @@ const DashboardPage = () => {
             <Card>
               <Statistic
                 title={t('dashboard.stats.totalAnomalies')}
-                value={stats?.totalAnomalies || 0}
+                value={stats?.total_anomalies || 0}
                 prefix={<AlertOutlined />}
                 valueStyle={{ color: '#cf1322' }}
               />
@@ -154,7 +154,7 @@ const DashboardPage = () => {
             <Card>
               <Statistic
                 title={t('dashboard.stats.openAnomalies')}
-                value={stats?.openAnomalies || 0}
+                value={stats?.open_anomalies || 0}
                 prefix={<ExclamationCircleOutlined />}
                 valueStyle={{ color: '#fa8c16' }}
               />
@@ -164,7 +164,7 @@ const DashboardPage = () => {
             <Card>
               <Statistic
                 title={t('dashboard.stats.criticalAnomalies')}
-                value={stats?.criticalAnomalies || 0}
+                value={stats?.critical_anomalies || 0}
                 prefix={<LineChartOutlined />}
                 valueStyle={{ color: '#ff4d4f' }}
               />
@@ -174,7 +174,7 @@ const DashboardPage = () => {
             <Card>
               <Statistic
                 title={t('dashboard.stats.recoverySuccessRate')}
-                value={stats?.recoverySuccessRate || 0}
+                value={stats?.recovery_success_rate || 0}
                 suffix="%"
                 prefix={<CheckCircleOutlined />}
                 valueStyle={{ color: '#52c41a' }}
@@ -197,7 +197,7 @@ const DashboardPage = () => {
               className={styles.tableCard}
             >
               <Table
-                dataSource={stats?.recentAnomalies || []}
+                dataSource={stats?.recent_anomalies || []}
                 columns={columns}
                 rowKey="id"
                 pagination={false}
@@ -210,7 +210,7 @@ const DashboardPage = () => {
 
         {/* 指标概览 */}
         <Row gutter={16} className={styles.metricsRow}>
-          {stats?.metricsOverview?.map((metric, index) => (
+          {stats?.metrics_overview?.map((metric, index) => (
             <Col xs={24} sm={12} lg={8} key={index}>
               <Card size="small">
                 <Statistic

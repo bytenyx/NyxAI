@@ -1,5 +1,5 @@
-import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios'
-import { ApiResponse, LoginParams, LoginResponse, User, PaginationParams, PaginationData, Anomaly, AnomalySeverity, AnomalyStatus, Metric, MetricQueryParams, RCAResult, RecoveryStrategy, RecoveryAction, DashboardStats } from '@types/index'
+import axios, { AxiosError, AxiosInstance } from 'axios'
+import { ApiResponse, PaginationParams, PaginationData, Anomaly, AnomalySeverity, AnomalyStatus, Metric, MetricQueryParams, RCAResult, RecoveryStrategy, RecoveryAction, DashboardStats } from '@types/index'
 
 // 创建 axios 实例
 const apiClient: AxiosInstance = axios.create({
@@ -10,49 +10,20 @@ const apiClient: AxiosInstance = axios.create({
   },
 })
 
-// 请求拦截器
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('accessToken')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
-
-// 响应拦截器
+// 响应拦截器 - 适配后端直接返回数据的格式
 apiClient.interceptors.response.use(
   (response) => {
-    return response.data
+    // 后端直接返回数据，包装成 ApiResponse 格式
+    return {
+      code: response.status,
+      message: 'success',
+      data: response.data,
+    }
   },
   (error: AxiosError<ApiResponse>) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('refreshToken')
-      window.location.href = '/login'
-    }
     return Promise.reject(error.response?.data || error.message)
   }
 )
-
-// 认证相关 API
-export const authApi = {
-  login: (params: LoginParams) =>
-    apiClient.post<ApiResponse<LoginResponse>>('/auth/login', params),
-
-  logout: () =>
-    apiClient.post<ApiResponse<void>>('/auth/logout'),
-
-  refreshToken: (refreshToken: string) =>
-    apiClient.post<ApiResponse<{ accessToken: string }>>('/auth/refresh', { refreshToken }),
-
-  getCurrentUser: () =>
-    apiClient.get<ApiResponse<User>>('/auth/me'),
-}
 
 // 仪表盘相关 API
 export const dashboardApi = {
@@ -118,21 +89,6 @@ export const recoveryApi = {
 
   cancel: (actionId: string) =>
     apiClient.post<ApiResponse<RecoveryAction>>(`/recovery/actions/${actionId}/cancel`),
-}
-
-// 用户管理 API
-export const userApi = {
-  getList: (params: PaginationParams) =>
-    apiClient.get<ApiResponse<PaginationData<User>>>('/users', { params }),
-
-  create: (data: Partial<User> & { password: string }) =>
-    apiClient.post<ApiResponse<User>>('/users', data),
-
-  update: (id: string, data: Partial<User>) =>
-    apiClient.put<ApiResponse<User>>(`/users/${id}`, data),
-
-  delete: (id: string) =>
-    apiClient.delete<ApiResponse<void>>(`/users/${id}`),
 }
 
 export default apiClient

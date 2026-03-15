@@ -263,3 +263,136 @@ async def list_api_keys(
             })
 
     return keys
+
+
+class RefreshTokenRequest(BaseModel):
+    """Request model for token refresh."""
+
+    refresh_token: str
+
+
+class LogoutResponse(BaseModel):
+    """Response model for logout."""
+
+    message: str = "Logged out successfully"
+
+
+@router.post(
+    "/auth/logout",
+    response_model=LogoutResponse,
+    summary="Logout",
+    description="Logout and invalidate the current token.",
+)
+async def logout(
+    current_user: Annotated[User, Depends(require_auth)],
+) -> LogoutResponse:
+    """Logout the current user."""
+    # In a production system, you would add the token to a blacklist
+    # or revoke it in some way. For now, we just return success.
+    return LogoutResponse()
+
+
+@router.post(
+    "/auth/refresh",
+    response_model=Token,
+    summary="Refresh token",
+    description="Refresh the access token using a refresh token.",
+)
+async def refresh_token(request: RefreshTokenRequest) -> Token:
+    """Refresh access token."""
+    # For simplicity, we create a new token with the same user data
+    # In production, you would validate the refresh token first
+    access_token_expires = timedelta(minutes=30)
+    access_token = create_access_token(
+        data={"sub": "user_id", "username": "user", "role": "viewer"},
+        expires_delta=access_token_expires,
+    )
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=int(access_token_expires.total_seconds()),
+    )
+
+
+# Users list endpoint for user management
+@router.get(
+    "/users",
+    response_model=list[UserResponse],
+    summary="List users",
+    description="List all users (admin only).",
+    dependencies=[Depends(require_admin)],
+)
+async def list_users() -> list[UserResponse]:
+    """List all users."""
+    from nyxai.api.auth import _users
+
+    return [
+        UserResponse(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            role=user.role.value,
+            is_active=user.is_active,
+            created_at=user.created_at.isoformat(),
+        )
+        for user in _users.values()
+    ]
+
+
+@router.put(
+    "/users/{user_id}",
+    response_model=UserResponse,
+    summary="Update user",
+    description="Update a user (admin only).",
+    dependencies=[Depends(require_admin)],
+)
+async def update_user_endpoint(
+    user_id: str,
+    request: CreateUserRequest,
+) -> UserResponse:
+    """Update a user."""
+    from nyxai.api.auth import _users
+
+    if user_id not in _users:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    user = _users[user_id]
+    if request.username:
+        user.username = request.username
+    if request.email:
+        user.email = request.email
+    if request.role:
+        user.role = request.role
+
+    return UserResponse(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        role=user.role.value,
+        is_active=user.is_active,
+        created_at=user.created_at.isoformat(),
+    )
+
+
+@router.delete(
+    "/users/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete user",
+    description="Delete a user (admin only).",
+    dependencies=[Depends(require_admin)],
+)
+async def delete_user_endpoint(user_id: str) -> None:
+    """Delete a user."""
+    from nyxai.api.auth import _users
+
+    if user_id not in _users:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    del _users[user_id]

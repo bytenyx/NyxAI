@@ -39,27 +39,6 @@
     "recovery": "Recovery",
     "settings": "Settings"
   },
-  "login": {
-    "title": "Login",
-    "username": "Username",
-    "password": "Password",
-    "remember": "Remember me",
-    "forgotPassword": "Forgot password?",
-    "submit": "Login",
-    "success": "Login successful",
-    "error": "Login failed, please check username and password",
-    "defaultAccount": "Default: admin / admin"
-  },
-  "user": {
-    "profile": "Profile",
-    "logout": "Logout",
-    "logoutSuccess": "Logged out successfully",
-    "role": {
-      "admin": "Admin",
-      "operator": "Operator",
-      "viewer": "Viewer"
-    }
-  },
   "dashboard": {
     "title": "Dashboard",
     "stats": {
@@ -213,7 +192,6 @@
     "title": "System Settings",
     "tabs": {
       "general": "General",
-      "users": "User Management",
       "notifications": "Notifications",
       "security": "Security"
     },
@@ -242,23 +220,6 @@
       "1m": "1m",
       "5m": "5m"
     }
-  },
-  "userManagement": {
-    "title": "User Management",
-    "addUser": "Add User",
-    "editUser": "Edit User",
-    "fields": {
-      "username": "Username",
-      "email": "Email",
-      "role": "Role",
-      "password": "Password",
-      "createdAt": "Created At"
-    },
-    "createSuccess": "User created",
-    "updateSuccess": "User updated",
-    "deleteSuccess": "User deleted",
-    "deleteConfirm": "Are you sure to delete this user?",
-    "passwordPlaceholder": "Default: 123456"
   },
   "notifications": {
     "title": "Notification Settings",

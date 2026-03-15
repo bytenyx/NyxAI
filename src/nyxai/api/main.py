@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from nyxai.api.routes import anomalies, auth, health, metrics, rca, recovery, websocket
+from nyxai.api.routes import anomalies, auth, dashboard, health, metrics, rca, recovery, websocket
 from nyxai.config import get_settings
 from nyxai.storage.cache import close_cache, init_cache
 from nyxai.storage.database import close_db, init_db
@@ -78,6 +78,7 @@ def create_application() -> FastAPI:
     app.include_router(health.router, tags=["health"])
     app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
     app.include_router(anomalies.router, prefix="/api/v1", tags=["anomalies"])
+    app.include_router(dashboard.router, prefix="/api/v1", tags=["dashboard"])
     app.include_router(metrics.router, prefix="/api/v1", tags=["metrics"])
     app.include_router(recovery.router, prefix="/api/v1", tags=["recovery"])
     app.include_router(rca.router, prefix="/api/v1", tags=["rca"])

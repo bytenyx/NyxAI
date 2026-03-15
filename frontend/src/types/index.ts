@@ -18,27 +18,6 @@ export interface PaginationData<T> {
   pageSize: number
 }
 
-// 用户相关
-export interface User {
-  id: string
-  username: string
-  email: string
-  role: 'admin' | 'operator' | 'viewer'
-  avatar?: string
-  createdAt: string
-}
-
-export interface LoginParams {
-  username: string
-  password: string
-}
-
-export interface LoginResponse {
-  accessToken: string
-  refreshToken: string
-  user: User
-}
-
 // 异常相关
 export type AnomalySeverity = 'critical' | 'high' | 'medium' | 'low'
 export type AnomalyStatus = 'open' | 'acknowledged' | 'resolved' | 'ignored'
@@ -51,13 +30,13 @@ export interface Anomaly {
   status: AnomalyStatus
   service: string
   metric: string
-  value: number
-  expectedValue: number
-  detectedAt: string
-  resolvedAt?: string
-  acknowledgedBy?: string
-  acknowledgedAt?: string
-  rcaResult?: RCAResult
+  current_value: number
+  expected_value: number
+  detected_at: string
+  resolved_at?: string
+  acknowledged_by?: string
+  acknowledged_at?: string
+  rca_result?: RCAResult
 }
 
 // 指标相关
@@ -82,13 +61,13 @@ export interface MetricQueryParams {
 // RCA 相关
 export interface RCAResult {
   id: string
-  anomalyId: string
-  rootCause: string
+  anomaly_id: string
+  root_cause: string
   confidence: number
-  serviceGraph?: ServiceGraph
-  dimensionAttribution?: DimensionAttribution[]
-  llmAnalysis?: string
-  createdAt: string
+  service_graph?: ServiceGraph
+  dimension_attribution?: DimensionAttribution[]
+  llm_analysis?: string
+  created_at: string
 }
 
 export interface ServiceGraph {
@@ -107,14 +86,14 @@ export interface ServiceEdge {
   source: string
   target: string
   latency: number
-  errorRate: number
+  error_rate: number
 }
 
 export interface DimensionAttribution {
   dimension: string
   value: string
   contribution: number
-  isAnomalous: boolean
+  is_anomalous: boolean
 }
 
 // 恢复相关
@@ -126,24 +105,24 @@ export interface RecoveryStrategy {
   name: string
   description: string
   type: string
-  riskLevel: RiskLevel
+  risk_level: RiskLevel
   parameters: Record<string, unknown>
 }
 
 export interface RecoveryAction {
   id: string
-  anomalyId: string
-  strategyId: string
-  strategyName: string
+  anomaly_id: string
+  strategy_id: string
+  strategy_name: string
   status: RecoveryStatus
   params: Record<string, unknown>
   result?: string
   error?: string
-  executedBy?: string
-  executedAt?: string
-  completedAt?: string
-  approvedBy?: string
-  approvedAt?: string
+  executed_by?: string
+  executed_at?: string
+  completed_at?: string
+  approved_by?: string
+  approved_at?: string
 }
 
 // WebSocket 消息
@@ -155,12 +134,12 @@ export interface WebSocketMessage {
 
 // 仪表盘统计
 export interface DashboardStats {
-  totalAnomalies: number
-  openAnomalies: number
-  criticalAnomalies: number
-  recoverySuccessRate: number
-  recentAnomalies: Anomaly[]
-  metricsOverview: {
+  total_anomalies: number
+  open_anomalies: number
+  critical_anomalies: number
+  recovery_success_rate: number
+  recent_anomalies: Anomaly[]
+  metrics_overview: {
     name: string
     value: number
     trend: number

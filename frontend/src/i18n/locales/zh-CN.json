@@ -39,27 +39,6 @@
     "recovery": "恢复操作",
     "settings": "系统配置"
   },
-  "login": {
-    "title": "登录",
-    "username": "用户名",
-    "password": "密码",
-    "remember": "记住我",
-    "forgotPassword": "忘记密码？",
-    "submit": "登录",
-    "success": "登录成功",
-    "error": "登录失败，请检查用户名和密码",
-    "defaultAccount": "默认账号: admin / admin"
-  },
-  "user": {
-    "profile": "个人中心",
-    "logout": "退出登录",
-    "logoutSuccess": "已退出登录",
-    "role": {
-      "admin": "管理员",
-      "operator": "操作员",
-      "viewer": "查看者"
-    }
-  },
   "dashboard": {
     "title": "仪表盘",
     "stats": {
@@ -213,7 +192,6 @@
     "title": "系统配置",
     "tabs": {
       "general": "通用设置",
-      "users": "用户管理",
       "notifications": "通知配置",
       "security": "安全设置"
     },
@@ -242,23 +220,6 @@
       "1m": "1分钟",
       "5m": "5分钟"
     }
-  },
-  "userManagement": {
-    "title": "用户管理",
-    "addUser": "添加用户",
-    "editUser": "编辑用户",
-    "fields": {
-      "username": "用户名",
-      "email": "邮箱",
-      "role": "角色",
-      "password": "密码",
-      "createdAt": "创建时间"
-    },
-    "createSuccess": "用户已创建",
-    "updateSuccess": "用户已更新",
-    "deleteSuccess": "用户已删除",
-    "deleteConfirm": "确定要删除此用户吗？",
-    "passwordPlaceholder": "默认密码: 123456"
   },
   "notifications": {
     "title": "通知配置",

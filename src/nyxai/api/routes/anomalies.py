@@ -301,3 +301,42 @@ async def resolve_anomaly(anomaly_id: str) -> AnomalyActionResponse:
         anomaly=AnomalyResponse.model_validate(anomaly),
         message="Anomaly resolved successfully",
     )
+
+
+@router.post(
+    "/anomalies/{anomaly_id}/ignore",
+    response_model=AnomalyActionResponse,
+    summary="Ignore anomaly",
+    description="Mark an anomaly as ignored/false positive.",
+    responses={
+        status.HTTP_404_NOT_FOUND: {"description": "Anomaly not found"},
+    },
+)
+async def ignore_anomaly(anomaly_id: str) -> AnomalyActionResponse:
+    """Ignore an anomaly.
+
+    Args:
+        anomaly_id: The unique identifier of the anomaly.
+
+    Returns:
+        AnomalyActionResponse: The result of the ignore action.
+
+    Raises:
+        HTTPException: If the anomaly is not found.
+    """
+    if anomaly_id not in _anomalies:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Anomaly with ID '{anomaly_id}' not found",
+        )
+
+    anomaly = _anomalies[anomaly_id]
+    from nyxai.detection.models.anomaly import AnomalyStatus
+    anomaly.status = AnomalyStatus.FALSE_POSITIVE
+    anomaly.resolved_at = datetime.utcnow()
+
+    return AnomalyActionResponse(
+        success=True,
+        anomaly=AnomalyResponse.model_validate(anomaly),
+        message="Anomaly ignored successfully",
+    )

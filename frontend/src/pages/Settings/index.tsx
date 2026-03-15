@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
   Card,
   Tabs,
@@ -8,26 +8,14 @@ import {
   Switch,
   Select,
   message,
-  Table,
-  Space,
-  Modal,
-  Tag,
-  Popconfirm,
 } from 'antd'
 import {
   SettingOutlined,
-  UserOutlined,
   BellOutlined,
   SafetyOutlined,
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import i18n from '../../i18n'
-import { userApi } from '@services/api'
-import { User, PaginationData } from '@types/index'
-import dayjs from 'dayjs'
 import styles from './styles.module.css'
 
 const { TabPane } = Tabs
@@ -37,26 +25,6 @@ const SettingsPage = () => {
   const { t } = useTranslation()
   const [generalForm] = Form.useForm()
   const [notificationForm] = Form.useForm()
-  const [userModalVisible, setUserModalVisible] = useState(false)
-  const [editingUser, setEditingUser] = useState<User | null>(null)
-  const [users, setUsers] = useState<PaginationData<User> | null>(null)
-  const [userLoading, setUserLoading] = useState(false)
-
-  const fetchUsers = async () => {
-    setUserLoading(true)
-    try {
-      const res = await userApi.getList({ page: 1, pageSize: 100 })
-      setUsers(res.data)
-    } catch (error) {
-      message.error(t('errors.fetchFailed'))
-    } finally {
-      setUserLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchUsers()
-  }, [])
 
   const handleGeneralSubmit = (values: { language: string }) => {
     // 切换语言
@@ -70,132 +38,12 @@ const SettingsPage = () => {
     message.success(t('notifications.saveSuccess'))
   }
 
-  const handleAddUser = () => {
-    setEditingUser(null)
-    setUserModalVisible(true)
-  }
-
-  const handleEditUser = (user: User) => {
-    setEditingUser(user)
-    setUserModalVisible(true)
-  }
-
-  const handleDeleteUser = async (id: string) => {
-    try {
-      await userApi.delete(id)
-      message.success(t('userManagement.deleteSuccess'))
-      fetchUsers()
-    } catch (error) {
-      message.error(t('errors.operationFailed'))
-    }
-  }
-
-  const handleUserModalSubmit = async (values: { username: string; email: string; role: string; password?: string }) => {
-    try {
-      if (editingUser) {
-        await userApi.update(editingUser.id, values)
-        message.success(t('userManagement.updateSuccess'))
-      } else {
-        await userApi.create({ ...values, password: values.password || '123456' })
-        message.success(t('userManagement.createSuccess'))
-      }
-      setUserModalVisible(false)
-      fetchUsers()
-    } catch (error) {
-      message.error(t('errors.operationFailed'))
-    }
-  }
-
-  const userColumns = [
-    {
-      title: t('userManagement.fields.username'),
-      dataIndex: 'username',
-      key: 'username',
-    },
-    {
-      title: t('userManagement.fields.email'),
-      dataIndex: 'email',
-      key: 'email',
-    },
-    {
-      title: t('userManagement.fields.role'),
-      dataIndex: 'role',
-      key: 'role',
-      render: (role: string) => {
-        const roleMap: Record<string, { color: string; text: string }> = {
-          admin: { color: 'red', text: t('user.role.admin') },
-          operator: { color: 'blue', text: t('user.role.operator') },
-          viewer: { color: 'green', text: t('user.role.viewer') },
-        }
-        const { color, text } = roleMap[role] || { color: 'default', text: role }
-        return <Tag color={color}>{text}</Tag>
-      },
-    },
-    {
-      title: t('userManagement.fields.createdAt'),
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (time: string) => dayjs(time).format('YYYY-MM-DD HH:mm'),
-    },
-    {
-      title: t('common.action'),
-      key: 'action',
-      render: (_: unknown, record: User) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => handleEditUser(record)}
-          >
-            {t('common.edit')}
-          </Button>
-          <Popconfirm
-            title={t('userManagement.deleteConfirm')}
-            onConfirm={() => handleDeleteUser(record.id)}
-            okText={t('common.confirm')}
-            cancelText={t('common.cancel')}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />}>
-              {t('common.delete')}
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ]
-
-  // 模拟用户数据
-  const mockUsers: User[] = [
-    {
-      id: '1',
-      username: 'admin',
-      email: 'admin@nyxai.com',
-      role: 'admin',
-      createdAt: '2024-01-01T00:00:00Z',
-    },
-    {
-      id: '2',
-      username: 'operator1',
-      email: 'operator1@nyxai.com',
-      role: 'operator',
-      createdAt: '2024-02-15T00:00:00Z',
-    },
-    {
-      id: '3',
-      username: 'viewer1',
-      email: 'viewer1@nyxai.com',
-      role: 'viewer',
-      createdAt: '2024-03-01T00:00:00Z',
-    },
-  ]
-
   return (
     <Card
       title={
-        <Space>
-          <SettingOutlined />
-          <span>{t('settings.title')}</span>
-        </Space>
+        <span>
+          <SettingOutlined /> {t('settings.title')}
+        </span>
       }
     >
       <Tabs defaultActiveKey="general">
@@ -279,29 +127,6 @@ const SettingsPage = () => {
               </Button>
             </Form.Item>
           </Form>
-        </TabPane>
-
-        <TabPane
-          tab={
-            <span>
-              <UserOutlined />
-              {t('settings.tabs.users')}
-            </span>
-          }
-          key="users"
-        >
-          <div className={styles.userHeader}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAddUser}>
-              {t('userManagement.addUser')}
-            </Button>
-          </div>
-          <Table
-            columns={userColumns}
-            dataSource={mockUsers}
-            rowKey="id"
-            loading={userLoading}
-            pagination={false}
-          />
         </TabPane>
 
         <TabPane
@@ -436,69 +261,6 @@ const SettingsPage = () => {
           </Form>
         </TabPane>
       </Tabs>
-
-      <Modal
-        title={editingUser ? t('userManagement.editUser') : t('userManagement.addUser')}
-        open={userModalVisible}
-        onCancel={() => setUserModalVisible(false)}
-        footer={null}
-      >
-        <Form
-          layout="vertical"
-          onFinish={handleUserModalSubmit}
-          initialValues={editingUser || { role: 'viewer' }}
-        >
-          <Form.Item
-            label={t('userManagement.fields.username')}
-            name="username"
-            rules={[{ required: true, message: t('userManagement.fields.username') }]}
-          >
-            <Input disabled={!!editingUser} />
-          </Form.Item>
-
-          <Form.Item
-            label={t('userManagement.fields.email')}
-            name="email"
-            rules={[
-              { required: true, message: t('userManagement.fields.email') },
-              { type: 'email', message: 'Email' },
-            ]}
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            label={t('userManagement.fields.role')}
-            name="role"
-            rules={[{ required: true, message: t('userManagement.fields.role') }]}
-          >
-            <Select>
-              <Option value="admin">{t('user.role.admin')}</Option>
-              <Option value="operator">{t('user.role.operator')}</Option>
-              <Option value="viewer">{t('user.role.viewer')}</Option>
-            </Select>
-          </Form.Item>
-
-          {!editingUser && (
-            <Form.Item
-              label={t('userManagement.fields.password')}
-              name="password"
-              rules={[{ required: true, message: t('userManagement.fields.password') }]}
-            >
-              <Input.Password placeholder={t('userManagement.passwordPlaceholder')} />
-            </Form.Item>
-          )}
-
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit">
-                {editingUser ? t('common.edit') : t('common.create')}
-              </Button>
-              <Button onClick={() => setUserModalVisible(false)}>{t('common.cancel')}</Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
     </Card>
   )
 }
