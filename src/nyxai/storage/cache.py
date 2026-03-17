@@ -1,26 +1,49 @@
-"""Redis cache connection and management.
+"""In-memory cache management.
 
-This module provides async Redis client operations and caching decorators.
+This module provides async in-memory cache operations and caching decorators.
 """
 
 import functools
 import hashlib
 import json
+import time
 from collections.abc import Callable
 from typing import Any, TypeVar
-
-import redis.asyncio as redis
-from redis.asyncio import Redis
 
 from nyxai.config import get_settings
 
 F = TypeVar("F", bound=Callable[..., Any])
 
 
-class CacheManager:
-    """Manages Redis cache connections and operations.
+class CacheItem:
+    """Cache item with expiration."""
 
-    This class provides an async interface to Redis for caching,
+    def __init__(self, value: Any, ttl: int | None = None):
+        """Initialize cache item.
+
+        Args:
+            value: The cached value.
+            ttl: Time to live in seconds. If None, no expiration.
+        """
+        self.value = value
+        self.ttl = ttl
+        self.created_at = time.time()
+
+    def is_expired(self) -> bool:
+        """Check if the item is expired.
+
+        Returns:
+            bool: True if expired, False otherwise.
+        """
+        if self.ttl is None:
+            return False
+        return time.time() - self.created_at > self.ttl
+
+
+class CacheManager:
+    """Manages in-memory cache operations.
+
+    This class provides an async interface to an in-memory cache,
     with support for key expiration and serialization.
 
     Example:
@@ -32,42 +55,16 @@ class CacheManager:
     """
 
     def __init__(self) -> None:
-        """Initialize the cache manager without connection."""
-        self._redis: Redis | None = None
+        """Initialize the cache manager."""
+        self._cache: dict[str, CacheItem] = {}
 
     async def connect(self) -> None:
-        """Initialize the Redis connection."""
-        if self._redis is None:
-            settings = get_settings()
-            redis_settings = settings.redis
-
-            self._redis = redis.from_url(
-                str(redis_settings.url),
-                password=redis_settings.password,
-                socket_timeout=redis_settings.socket_timeout,
-                socket_connect_timeout=redis_settings.socket_connect_timeout,
-                decode_responses=True,
-            )
+        """Initialize the cache (no-op for in-memory)."""
+        pass
 
     async def close(self) -> None:
-        """Close the Redis connection."""
-        if self._redis is not None:
-            await self._redis.close()
-            self._redis = None
-
-    @property
-    def client(self) -> Redis:
-        """Get the Redis client.
-
-        Raises:
-            RuntimeError: If the client has not been connected.
-
-        Returns:
-            Redis: The async Redis client.
-        """
-        if self._redis is None:
-            raise RuntimeError("Redis client not connected. Call connect() first.")
-        return self._redis
+        """Close the cache (no-op for in-memory)."""
+        self._cache.clear()
 
     async def get(self, key: str) -> Any | None:
         """Get a value from cache.
@@ -76,15 +73,15 @@ class CacheManager:
             key: The cache key.
 
         Returns:
-            Any | None: The cached value or None if not found.
+            Any | None: The cached value or None if not found or expired.
         """
-        value = await self.client.get(key)
-        if value is None:
+        item = self._cache.get(key)
+        if item is None:
             return None
-        try:
-            return json.loads(value)
-        except json.JSONDecodeError:
-            return value
+        if item.is_expired():
+            del self._cache[key]
+            return None
+        return item.value
 
     async def set(
         self,
@@ -96,17 +93,16 @@ class CacheManager:
 
         Args:
             key: The cache key.
-            value: The value to cache (will be JSON serialized).
+            value: The value to cache.
             ttl: Time to live in seconds. If None, no expiration.
 
         Returns:
             bool: True if successful, False otherwise.
         """
         try:
-            serialized = json.dumps(value, default=str)
-            await self.client.set(key, serialized, ex=ttl)
+            self._cache[key] = CacheItem(value, ttl)
             return True
-        except (TypeError, json.JSONDecodeError):
+        except Exception:
             return False
 
     async def delete(self, key: str) -> bool:
@@ -118,8 +114,10 @@ class CacheManager:
         Returns:
             bool: True if key was deleted, False otherwise.
         """
-        result = await self.client.delete(key)
-        return result > 0
+        if key in self._cache:
+            del self._cache[key]
+            return True
+        return False
 
     async def exists(self, key: str) -> bool:
         """Check if a key exists in cache.
@@ -128,9 +126,15 @@ class CacheManager:
             key: The cache key.
 
         Returns:
-            bool: True if key exists, False otherwise.
+            bool: True if key exists and is not expired, False otherwise.
         """
-        return await self.client.exists(key) > 0
+        item = self._cache.get(key)
+        if item is None:
+            return False
+        if item.is_expired():
+            del self._cache[key]
+            return False
+        return True
 
     async def ttl(self, key: str) -> int:
         """Get the remaining TTL of a key.
@@ -139,9 +143,18 @@ class CacheManager:
             key: The cache key.
 
         Returns:
-            int: TTL in seconds, -1 if no expiration, -2 if key doesn't exist.
+            int: TTL in seconds, -1 if no expiration, -2 if key doesn't exist or expired.
         """
-        return await self.client.ttl(key)
+        item = self._cache.get(key)
+        if item is None:
+            return -2
+        if item.is_expired():
+            del self._cache[key]
+            return -2
+        if item.ttl is None:
+            return -1
+        remaining = item.ttl - (time.time() - item.created_at)
+        return max(0, int(remaining))
 
     async def expire(self, key: str, seconds: int) -> bool:
         """Set expiration on a key.
@@ -153,7 +166,15 @@ class CacheManager:
         Returns:
             bool: True if expiration was set, False otherwise.
         """
-        return await self.client.expire(key, seconds)
+        item = self._cache.get(key)
+        if item is None:
+            return False
+        if item.is_expired():
+            del self._cache[key]
+            return False
+        item.ttl = seconds
+        item.created_at = time.time()
+        return True
 
     async def keys(self, pattern: str = "*") -> list[str]:
         """Get keys matching a pattern.
@@ -164,7 +185,10 @@ class CacheManager:
         Returns:
             list[str]: List of matching keys.
         """
-        return [key async for key in self.client.scan_iter(match=pattern)]
+        import fnmatch
+        # Clean expired keys first
+        self._clean_expired()
+        return [key for key in self._cache if fnmatch.fnmatch(key, pattern)]
 
     async def clear_pattern(self, pattern: str) -> int:
         """Delete all keys matching a pattern.
@@ -175,21 +199,27 @@ class CacheManager:
         Returns:
             int: Number of keys deleted.
         """
-        keys = await self.keys(pattern)
-        if keys:
-            return await self.client.delete(*keys)
-        return 0
+        import fnmatch
+        # Clean expired keys first
+        self._clean_expired()
+        keys_to_delete = [key for key in self._cache if fnmatch.fnmatch(key, pattern)]
+        for key in keys_to_delete:
+            del self._cache[key]
+        return len(keys_to_delete)
 
     async def health_check(self) -> bool:
-        """Check Redis connectivity.
+        """Check cache health (always true for in-memory).
 
         Returns:
-            bool: True if Redis is reachable, False otherwise.
+            bool: Always True.
         """
-        try:
-            return await self.client.ping()
-        except Exception:
-            return False
+        return True
+
+    def _clean_expired(self) -> None:
+        """Clean up expired items from the cache."""
+        expired_keys = [key for key, item in self._cache.items() if item.is_expired()]
+        for key in expired_keys:
+            del self._cache[key]
 
 
 # Global cache manager instance
@@ -217,18 +247,7 @@ async def close_cache() -> None:
         _cache_manager = None
 
 
-def get_redis_client() -> Redis:
-    """Get the global Redis client.
 
-    Raises:
-        RuntimeError: If the cache manager has not been initialized.
-
-    Returns:
-        Redis: The async Redis client.
-    """
-    if _cache_manager is None:
-        raise RuntimeError("Cache not initialized. Call init_cache() first.")
-    return _cache_manager.client
 
 
 def _generate_cache_key(prefix: str, func: Callable[..., Any], args: Any, kwargs: Any) -> str:

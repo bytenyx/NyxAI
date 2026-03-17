@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, PostgresDsn, RedisDsn, field_validator
+from pydantic import Field, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -40,22 +40,6 @@ class DatabaseSettings(BaseSettings):
     def is_postgres(self) -> bool:
         """Check if using PostgreSQL database."""
         return "postgres" in self.url.lower()
-
-
-class RedisSettings(BaseSettings):
-    """Redis connection settings."""
-
-    model_config = SettingsConfigDict(env_prefix="NYX_REDIS_")
-
-    url: RedisDsn = Field(
-        default="redis://localhost:6379/0",
-        description="Redis connection URL",
-    )
-    password: str | None = Field(default=None, description="Redis password")
-    socket_timeout: int = Field(default=5, ge=1, description="Socket timeout in seconds")
-    socket_connect_timeout: int = Field(
-        default=5, ge=1, description="Socket connection timeout in seconds"
-    )
 
 
 class LLMSettings(BaseSettings):
@@ -102,11 +86,11 @@ class CelerySettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="NYX_CELERY_")
 
     broker_url: str = Field(
-        default="redis://localhost:6379/1",
+        default="memory://",
         description="Celery broker URL",
     )
     result_backend: str = Field(
-        default="redis://localhost:6379/2",
+        default="file://./data/celery_results",
         description="Celery result backend URL",
     )
     task_serializer: str = Field(default="json", description="Task serializer")
@@ -235,7 +219,6 @@ class Settings(BaseSettings):
 
     # Nested settings
     db: DatabaseSettings = Field(default_factory=DatabaseSettings)
-    redis: RedisSettings = Field(default_factory=RedisSettings)
     llm: LLMSettings = Field(default_factory=LLMSettings)
     prometheus: PrometheusSettings = Field(default_factory=PrometheusSettings)
     celery: CelerySettings = Field(default_factory=CelerySettings)
