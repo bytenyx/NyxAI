@@ -54,7 +54,7 @@ const getConfidenceColor = (confidence: number) => {
 };
 
 const EvidenceTimeline: React.FC<EvidenceTimelineProps> = ({ evidence, evidenceChain }) => {
-  const timelineItems = evidence.map((e, index) => ({
+  const timelineItems = evidence.map((e) => ({
     key: e.id,
     dot: getEvidenceIcon(e.evidence_type),
     children: (

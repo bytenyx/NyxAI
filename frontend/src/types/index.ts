@@ -7,6 +7,18 @@ export interface Session {
   updated_at: string
 }
 
+export interface SessionListItem {
+  id: string
+  title: string
+  trigger_type: string
+  trigger_source: string
+  status: 'investigating' | 'diagnosing' | 'recovering' | 'completed' | 'failed'
+  created_at: string
+  updated_at: string
+  message_count?: number
+  last_message?: string
+}
+
 export interface ChatRequest {
   session_id?: string
   message: string

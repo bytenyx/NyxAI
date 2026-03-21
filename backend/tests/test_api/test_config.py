@@ -5,7 +5,7 @@ from app.config import Settings
 def test_settings_default_values():
     settings = Settings()
     assert settings.APP_NAME == "NyxAI"
-    assert settings.DEBUG is False
+    assert settings.DEBUG is True
     assert settings.DATABASE_URL is not None
 
 

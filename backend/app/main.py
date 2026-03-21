@@ -11,6 +11,8 @@ from app.api.sessions import router as sessions_router
 from app.api.chat import router as chat_router
 from app.api.knowledge import router as knowledge_router
 from app.api.webhook import router as webhook_router
+from app.api.websocket import router as websocket_router
+from app.api.datasources import router as datasources_router
 
 settings = get_settings()
 
@@ -42,6 +44,8 @@ app.include_router(sessions_router)
 app.include_router(chat_router)
 app.include_router(knowledge_router)
 app.include_router(webhook_router)
+app.include_router(websocket_router)
+app.include_router(datasources_router)
 
 
 @app.get("/")
