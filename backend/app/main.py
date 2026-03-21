@@ -10,6 +10,7 @@ from app.utils.logger import setup_logging
 from app.api.sessions import router as sessions_router
 from app.api.chat import router as chat_router
 from app.api.knowledge import router as knowledge_router
+from app.api.webhook import router as webhook_router
 
 settings = get_settings()
 
@@ -31,20 +32,21 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
+    allow_methods=settings.CORS_ALLOW_METHODS.split(",") if settings.CORS_ALLOW_METHODS != "*" else ["*"],
+    allow_headers=settings.CORS_ALLOW_HEADERS.split(",") if settings.CORS_ALLOW_HEADERS != "*" else ["*"],
 )
 
 app.include_router(sessions_router)
 app.include_router(chat_router)
 app.include_router(knowledge_router)
+app.include_router(webhook_router)
 
 
 @app.get("/")
 async def root():
-    return {"name": settings.APP_NAME, "version": "0.1.0"}
+    return {"name": settings.APP_NAME, "version": "0.1.0", "environment": settings.ENVIRONMENT}
 
 
 @app.get("/health")

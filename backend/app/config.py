@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Optional
+from typing import List, Optional
 
 from pydantic_settings import BaseSettings
 
@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     APP_NAME: str = "NyxAI"
     DEBUG: bool = False
+    ENVIRONMENT: str = "development"
     
     DATABASE_URL: str = "sqlite+aiosqlite:///./nyxai.db"
     
@@ -22,6 +23,17 @@ class Settings(BaseSettings):
     INFLUXDB_TOKEN: Optional[str] = None
     LOKI_URL: Optional[str] = None
     JAEGER_URL: Optional[str] = None
+    
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+    CORS_ALLOW_CREDENTIALS: bool = True
+    CORS_ALLOW_METHODS: str = "*"
+    CORS_ALLOW_HEADERS: str = "*"
+
+    @property
+    def cors_origins_list(self) -> List[str]:
+        if self.ENVIRONMENT == "development":
+            return ["*"]
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
     class Config:
         env_file = ".env"

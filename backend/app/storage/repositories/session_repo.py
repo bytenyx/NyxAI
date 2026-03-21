@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -85,6 +85,100 @@ class SessionRepository:
             return None
         
         db_session.status = status.value
+        db_session.updated_at = datetime.now()
+        await self.session.flush()
+        
+        return await self.get(session_id)
+
+    async def update_investigation(
+        self, session_id: str, investigation_data: Dict[str, Any]
+    ) -> Optional[Session]:
+        result = await self.session.execute(
+            select(SessionDB).where(SessionDB.id == session_id)
+        )
+        db_session = result.scalar_one_or_none()
+        if not db_session:
+            return None
+        
+        db_session.investigation = investigation_data
+        db_session.updated_at = datetime.now()
+        await self.session.flush()
+        
+        return await self.get(session_id)
+
+    async def update_root_cause(
+        self, session_id: str, root_cause_data: Dict[str, Any]
+    ) -> Optional[Session]:
+        result = await self.session.execute(
+            select(SessionDB).where(SessionDB.id == session_id)
+        )
+        db_session = result.scalar_one_or_none()
+        if not db_session:
+            return None
+        
+        db_session.root_cause = root_cause_data
+        db_session.updated_at = datetime.now()
+        await self.session.flush()
+        
+        return await self.get(session_id)
+
+    async def update_recovery_plan(
+        self, session_id: str, recovery_plan_data: Dict[str, Any]
+    ) -> Optional[Session]:
+        result = await self.session.execute(
+            select(SessionDB).where(SessionDB.id == session_id)
+        )
+        db_session = result.scalar_one_or_none()
+        if not db_session:
+            return None
+        
+        db_session.recovery_plan = recovery_plan_data
+        db_session.updated_at = datetime.now()
+        await self.session.flush()
+        
+        return await self.get(session_id)
+
+    async def update_execution_results(
+        self, session_id: str, execution_results: List[Dict[str, Any]]
+    ) -> Optional[Session]:
+        result = await self.session.execute(
+            select(SessionDB).where(SessionDB.id == session_id)
+        )
+        db_session = result.scalar_one_or_none()
+        if not db_session:
+            return None
+        
+        db_session.execution_results = execution_results
+        db_session.updated_at = datetime.now()
+        await self.session.flush()
+        
+        return await self.get(session_id)
+
+    async def update_session(
+        self,
+        session_id: str,
+        status: Optional[SessionStatus] = None,
+        investigation: Optional[Dict[str, Any]] = None,
+        root_cause: Optional[Dict[str, Any]] = None,
+        recovery_plan: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Session]:
+        result = await self.session.execute(
+            select(SessionDB).where(SessionDB.id == session_id)
+        )
+        db_session = result.scalar_one_or_none()
+        if not db_session:
+            return None
+        
+        if status is not None:
+            db_session.status = status.value
+        if investigation is not None:
+            db_session.investigation = investigation
+        if root_cause is not None:
+            db_session.root_cause = root_cause
+        if recovery_plan is not None:
+            db_session.recovery_plan = recovery_plan
+        
+        db_session.updated_at = datetime.now()
         await self.session.flush()
         
         return await self.get(session_id)

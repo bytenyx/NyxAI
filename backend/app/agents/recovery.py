@@ -17,11 +17,21 @@ class RecoveryAgent(BaseAgent):
         system_prompt = """你是一个故障恢复专家。你的任务是基于根因分析结果，
 制定恢复方案，评估风险等级。
 
-请返回JSON格式的结果，包含：
-1. actions: 恢复操作列表
-2. risk_level: 风险等级(low/medium/high)
-3. requires_confirmation: 是否需要确认
-4. rollback_plan: 回滚方案"""
+请严格返回JSON格式的结果（不要包含markdown代码块标记），包含：
+{
+    "actions": [
+        {
+            "action_type": "restart/scale/configure/investigate",
+            "description": "操作描述",
+            "risk_level": "low/medium/high",
+            "target": "目标组件"
+        }
+    ],
+    "risk_level": "low/medium/high",
+    "requires_confirmation": true/false,
+    "rollback_plan": "回滚方案描述",
+    "estimated_impact": "影响评估"
+}"""
         
         prompt = f"""请为以下问题制定恢复方案：
 问题：{query}
@@ -31,24 +41,35 @@ class RecoveryAgent(BaseAgent):
         response = await self.llm.generate(
             prompt=prompt,
             system_prompt=system_prompt,
+            expect_json=True,
         )
         
-        risk_level = self._assess_risk(confidence)
+        parsed = response.parsed_json or {}
+        
+        actions = parsed.get("actions", [])
+        if not actions:
+            actions = [
+                {
+                    "action_type": "investigate",
+                    "description": "需要进一步调查确认根因",
+                    "risk_level": "low",
+                    "target": "unknown",
+                }
+            ]
+        
+        risk_level = parsed.get("risk_level", self._assess_risk(confidence))
+        requires_confirmation = parsed.get("requires_confirmation", risk_level != "low")
+        rollback_plan = parsed.get("rollback_plan", "暂无回滚方案")
+        estimated_impact = parsed.get("estimated_impact", "需要评估")
         
         return AgentResult(
             success=True,
             data={
-                "actions": [
-                    {
-                        "action_type": "investigate",
-                        "description": "进一步调查确认",
-                        "risk_level": "low",
-                    }
-                ],
+                "actions": actions,
                 "risk_level": risk_level,
-                "requires_confirmation": risk_level != "low",
-                "rollback_plan": "暂无回滚方案",
-                "estimated_impact": "低风险操作",
+                "requires_confirmation": requires_confirmation,
+                "rollback_plan": rollback_plan,
+                "estimated_impact": estimated_impact,
             },
         )
 
