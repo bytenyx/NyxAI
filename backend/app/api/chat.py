@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -21,10 +21,26 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=10000)
 
 
+class AnomalyInfo(BaseModel):
+    name: str
+    severity: str
+    description: Optional[str] = None
+
+
+class ActionInfo(BaseModel):
+    action_type: str
+    description: str
+    risk_level: str
+    target: Optional[str] = None
+
+
 class ChatResponse(BaseModel):
     session_id: str
     response: str
     status: str
+    investigation: Optional[Dict[str, Any]] = None
+    diagnosis: Optional[Dict[str, Any]] = None
+    recovery: Optional[Dict[str, Any]] = None
 
 
 @router.post("/message", response_model=ChatResponse)
@@ -65,23 +81,53 @@ async def chat_message(
     result = await orchestrator.execute(context)
     
     if result.success:
+        investigation = result.data.get("investigation", {})
+        diagnosis = result.data.get("diagnosis", {})
         recovery = result.data.get("recovery", {})
+        
+        response_parts = []
+        
+        if investigation.get("summary"):
+            response_parts.append(f"【调查摘要】\n{investigation['summary']}")
+        
+        anomalies = investigation.get("anomalies", [])
+        if anomalies:
+            anomaly_text = "\n".join([
+                f"  - {a.get('name', '未知')}: {a.get('description', '')} (严重性: {a.get('severity', 'unknown')})"
+                for a in anomalies
+            ])
+            response_parts.append(f"【发现异常】\n{anomaly_text}")
+        
+        if diagnosis.get("root_cause"):
+            response_parts.append(f"【根因分析】\n{diagnosis['root_cause']}")
+            if diagnosis.get("confidence"):
+                response_parts.append(f"置信度: {diagnosis['confidence']:.0%}")
+        
         actions = recovery.get("actions", [])
         if actions:
-            response_text = actions[0].get("description", "处理完成")
-        else:
-            response_text = "处理完成"
+            action_text = "\n".join([
+                f"  {i+1}. {a.get('description', '')} (风险: {a.get('risk_level', 'unknown')}, 目标: {a.get('target', 'unknown')})"
+                for i, a in enumerate(actions)
+            ])
+            response_parts.append(f"【建议操作】\n{action_text}")
         
-        diagnosis = result.data.get("diagnosis", {})
-        if diagnosis.get("root_cause"):
-            response_text = f"根因分析: {diagnosis['root_cause'][:200]}\n建议: {response_text}"
+        if recovery.get("rollback_plan"):
+            response_parts.append(f"【回滚方案】\n{recovery['rollback_plan']}")
+        
+        response_text = "\n\n".join(response_parts) if response_parts else "分析完成"
     else:
         response_text = f"处理失败: {result.error}"
+        investigation = None
+        diagnosis = None
+        recovery = None
     
     return ChatResponse(
         session_id=session_id,
         response=response_text,
         status=result.data.get("status", "unknown") if result.success else "failed",
+        investigation=investigation if result.success else None,
+        diagnosis=diagnosis if result.success else None,
+        recovery=recovery if result.success else None,
     )
 
 

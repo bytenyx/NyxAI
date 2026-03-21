@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -6,6 +7,7 @@ from typing import Any, Dict, List, Optional
 from app.config import get_settings
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -50,6 +52,13 @@ class LLMService:
         history: Optional[List[Dict[str, str]]] = None,
         expect_json: bool = False,
     ) -> LLMResponse:
+        logger.info("=" * 60)
+        logger.info("[LLM Request] provider=%s model=%s", self.config.provider, self.config.model)
+        if system_prompt:
+            logger.info("[LLM System Prompt]\n%s", system_prompt[:500] + "..." if len(system_prompt) > 500 else system_prompt)
+        logger.info("[LLM Prompt]\n%s", prompt[:1000] + "..." if len(prompt) > 1000 else prompt)
+        logger.info("[LLM Expect JSON] %s", expect_json)
+        
         if self.config.provider == "mock":
             response = LLMResponse(
                 content=self._get_mock_response(prompt, expect_json),
@@ -63,6 +72,12 @@ class LLMService:
         
         if expect_json:
             response.parsed_json = self._parse_json_response(response.content)
+        
+        logger.info("[LLM Response] usage=%s", response.usage)
+        logger.info("[LLM Content]\n%s", response.content[:1000] + "..." if len(response.content) > 1000 else response.content)
+        if response.parsed_json:
+            logger.info("[LLM Parsed JSON]\n%s", json.dumps(response.parsed_json, ensure_ascii=False, indent=2)[:500])
+        logger.info("=" * 60)
         
         return response
 

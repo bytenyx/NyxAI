@@ -1,13 +1,13 @@
 from typing import Any, Dict, List
 
 from app.agents.base import AgentContext, AgentResult, BaseAgent
-from app.services.llm import LLMConfig, LLMService
+from app.services.llm import LLMService
 
 
 class RecoveryAgent(BaseAgent):
     def __init__(self, llm_service: LLMService = None):
         super().__init__(name="recovery")
-        self.llm = llm_service or LLMService(LLMConfig(provider="mock", model="mock"))
+        self.llm = llm_service or LLMService()
 
     async def execute(self, context: AgentContext) -> AgentResult:
         query = context.query or ""

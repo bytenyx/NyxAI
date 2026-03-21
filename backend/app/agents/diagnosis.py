@@ -4,13 +4,13 @@ import uuid
 
 from app.agents.base import AgentContext, AgentResult, BaseAgent
 from app.models.evidence import Evidence, EvidenceNode, EvidenceType
-from app.services.llm import LLMConfig, LLMService
+from app.services.llm import LLMService
 
 
 class DiagnosisAgent(BaseAgent):
     def __init__(self, llm_service: LLMService = None):
         super().__init__(name="diagnosis")
-        self.llm = llm_service or LLMService(LLMConfig(provider="mock", model="mock"))
+        self.llm = llm_service or LLMService()
 
     async def execute(self, context: AgentContext) -> AgentResult:
         query = context.query or ""
@@ -92,7 +92,7 @@ class DiagnosisAgent(BaseAgent):
             data={
                 "root_cause": root_cause,
                 "confidence": confidence,
-                "evidence_chain": [node.model_dump() for node in evidence_nodes],
+                "evidence_chain": [node.model_dump(mode='json') for node in evidence_nodes],
                 "affected_components": affected_components,
                 "reasoning_report": reasoning_report,
             },

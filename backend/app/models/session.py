@@ -74,9 +74,9 @@ class Session(BaseModel):
     trigger_type: str = Field(..., description="Trigger type: webhook/scheduled/chat")
     trigger_source: str = Field(..., description="Trigger source")
     status: SessionStatus
-    investigation: Optional[InvestigationResult] = None
-    root_cause: Optional[RootCauseAnalysis] = None
-    recovery_plan: Optional[RecoveryPlan] = None
+    investigation: Optional[Dict[str, Any]] = None
+    root_cause: Optional[Dict[str, Any]] = None
+    recovery_plan: Optional[Dict[str, Any]] = None
     execution_results: List[Dict[str, Any]] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
