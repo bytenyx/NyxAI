@@ -1,8 +1,7 @@
 from typing import List, Optional
 import uuid
-from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,17 +41,17 @@ async def create_knowledge(
         knowledge_type=request.knowledge_type,
         title=request.title,
         content=request.content,
-        metadata=request.metadata,
+        extra_data=request.metadata,
     )
     db_session.add(db_knowledge)
-    await db_session.flush()
+    await db_session.commit()
     
     return KnowledgeResponse(
         id=knowledge_id,
         knowledge_type=request.knowledge_type,
         title=request.title,
         content=request.content,
-        metadata=request.metadata,
+        metadata=db_knowledge.extra_data,
         created_at=db_knowledge.created_at.isoformat(),
         updated_at=db_knowledge.updated_at.isoformat(),
     )
@@ -81,7 +80,7 @@ async def list_knowledge(
             knowledge_type=k.knowledge_type,
             title=k.title,
             content=k.content,
-            metadata=k.metadata,
+            metadata=k.extra_data,
             created_at=k.created_at.isoformat(),
             updated_at=k.updated_at.isoformat(),
         )
@@ -99,7 +98,6 @@ async def get_knowledge(
     )
     k = result.scalar_one_or_none()
     if not k:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Knowledge not found")
     
     return KnowledgeResponse(
@@ -107,7 +105,7 @@ async def get_knowledge(
         knowledge_type=k.knowledge_type,
         title=k.title,
         content=k.content,
-        metadata=k.metadata,
+        metadata=k.extra_data,
         created_at=k.created_at.isoformat(),
         updated_at=k.updated_at.isoformat(),
     )

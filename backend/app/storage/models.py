@@ -47,7 +47,7 @@ class KnowledgeDB(Base):
     knowledge_type: Mapped[str] = mapped_column(String(20), index=True)
     title: Mapped[str] = mapped_column(String(200))
     content: Mapped[str] = mapped_column(Text)
-    metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    extra_data: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=func.now(), onupdate=func.now()

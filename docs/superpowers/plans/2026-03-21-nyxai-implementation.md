@@ -10,7 +10,7 @@
 
 **Spec:** [设计文档](../specs/2026-03-21-nyxai-ops-agent-design.md)
 
----
+***
 
 ## 文件结构
 
@@ -87,17 +87,17 @@ NyxAI/
 └── docker-compose.yml
 ```
 
----
+***
 
 ## Phase 1: 后端核心框架
 
 ### Task 1.1: 项目初始化
 
 **Files:**
+
 - Create: `backend/pyproject.toml`
 - Create: `backend/.python-version`
 - Create: `backend/app/__init__.py`
-
 - [ ] **Step 1: 初始化uv项目**
 
 ```bash
@@ -172,14 +172,14 @@ git add backend/
 git commit -m "chore: initialize backend project with uv"
 ```
 
----
+***
 
 ### Task 1.2: 配置管理
 
 **Files:**
+
 - Create: `backend/app/config.py`
 - Create: `backend/tests/test_api/test_config.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -255,6 +255,7 @@ cd backend
 uv add pydantic-settings
 uv run pytest tests/test_api/test_config.py -v
 ```
+
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -264,14 +265,14 @@ git add backend/app/config.py backend/tests/test_api/test_config.py backend/pypr
 git commit -m "feat: add configuration management with pydantic-settings"
 ```
 
----
+***
 
 ### Task 1.3: 日志工具
 
 **Files:**
+
 - Create: `backend/app/utils/logger.py`
 - Create: `backend/tests/test_api/test_logger.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -335,14 +336,14 @@ git add backend/app/utils/logger.py backend/tests/test_api/test_logger.py
 git commit -m "feat: add logging utility"
 ```
 
----
+***
 
 ### Task 1.4: 数据库连接
 
 **Files:**
+
 - Create: `backend/app/storage/database.py`
 - Create: `backend/tests/test_api/test_database.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -423,14 +424,14 @@ git add backend/app/storage/database.py backend/tests/test_api/test_database.py
 git commit -m "feat: add async database connection with SQLAlchemy"
 ```
 
----
+***
 
 ### Task 1.5: 核心数据模型 - Evidence
 
 **Files:**
+
 - Create: `backend/app/models/evidence.py`
 - Create: `backend/tests/test_api/test_evidence_model.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -528,14 +529,14 @@ git add backend/app/models/evidence.py backend/tests/test_api/test_evidence_mode
 git commit -m "feat: add Evidence and EvidenceNode models"
 ```
 
----
+***
 
 ### Task 1.6: 核心数据模型 - Session
 
 **Files:**
+
 - Create: `backend/app/models/session.py`
 - Create: `backend/tests/test_api/test_session_model.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -676,14 +677,14 @@ git add backend/app/models/session.py backend/tests/test_api/test_session_model.
 git commit -m "feat: add Session and related models"
 ```
 
----
+***
 
 ### Task 1.7: 数据库表模型
 
 **Files:**
+
 - Create: `backend/app/storage/models.py`
 - Create: `backend/tests/test_api/test_db_models.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -793,15 +794,15 @@ git add backend/app/storage/models.py backend/tests/test_api/test_db_models.py
 git commit -m "feat: add SQLAlchemy database models"
 ```
 
----
+***
 
 ### Task 1.8: FastAPI应用入口
 
 **Files:**
+
 - Create: `backend/app/main.py`
 - Create: `backend/app/api/__init__.py`
 - Create: `backend/tests/test_api/test_main.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -893,15 +894,15 @@ git add backend/app/main.py backend/app/api/__init__.py backend/tests/test_api/t
 git commit -m "feat: add FastAPI application entry point"
 ```
 
----
+***
 
 ### Task 1.9: Session API
 
 **Files:**
+
 - Create: `backend/app/api/sessions.py`
 - Create: `backend/app/storage/repositories/session.py`
 - Create: `backend/tests/test_api/test_sessions_api.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -1115,16 +1116,16 @@ git add backend/app/api/sessions.py backend/app/storage/repositories/session.py 
 git commit -m "feat: add Session API with CRUD operations"
 ```
 
----
+***
 
 ## Phase 2: Agent核心实现
 
 ### Task 2.1: Agent基类
 
 **Files:**
+
 - Create: `backend/app/agents/base.py`
 - Create: `backend/tests/test_agents/test_base_agent.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -1207,14 +1208,14 @@ git add backend/app/agents/base.py backend/tests/test_agents/test_base_agent.py
 git commit -m "feat: add BaseAgent abstract class"
 ```
 
----
+***
 
 ### Task 2.2: LLM服务
 
 **Files:**
+
 - Create: `backend/app/services/llm.py`
 - Create: `backend/tests/test_services/test_llm.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -1337,6 +1338,7 @@ mkdir -p backend/tests/test_services
 touch backend/tests/test_services/__init__.py
 cd backend && uv run pytest tests/test_services/test_llm.py -v
 ```
+
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -1346,15 +1348,15 @@ git add backend/app/services/llm.py backend/tests/test_services/
 git commit -m "feat: add LLM service with multi-provider support"
 ```
 
----
+***
 
 ### Task 2.3: 调查Agent
 
 **Files:**
+
 - Create: `backend/app/agents/investigation.py`
 - Create: `backend/app/tools/__init__.py`
 - Create: `backend/tests/test_agents/test_investigation.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -1464,14 +1466,14 @@ git add backend/app/agents/investigation.py backend/app/tools/__init__.py backen
 git commit -m "feat: add InvestigationAgent"
 ```
 
----
+***
 
 ### Task 2.4: 根因定界Agent
 
 **Files:**
+
 - Create: `backend/app/agents/diagnosis.py`
 - Create: `backend/tests/test_agents/test_diagnosis.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -1596,14 +1598,14 @@ git add backend/app/agents/diagnosis.py backend/tests/test_agents/test_diagnosis
 git commit -m "feat: add DiagnosisAgent with evidence chain support"
 ```
 
----
+***
 
 ### Task 2.5: 恢复Agent
 
 **Files:**
+
 - Create: `backend/app/agents/recovery.py`
 - Create: `backend/tests/test_agents/test_recovery.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -1729,14 +1731,14 @@ git add backend/app/agents/recovery.py backend/tests/test_agents/test_recovery.p
 git commit -m "feat: add RecoveryAgent with risk assessment"
 ```
 
----
+***
 
 ### Task 2.6: Orchestrator Agent
 
 **Files:**
+
 - Create: `backend/app/agents/orchestrator.py`
 - Create: `backend/tests/test_agents/test_orchestrator.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -1853,16 +1855,16 @@ git add backend/app/agents/orchestrator.py backend/tests/test_agents/test_orches
 git commit -m "feat: add OrchestratorAgent for workflow coordination"
 ```
 
----
+***
 
 ## Phase 3: Chat API
 
 ### Task 3.1: Chat API
 
 **Files:**
+
 - Create: `backend/app/api/chat.py`
 - Create: `backend/tests/test_api/test_chat_api.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -1982,20 +1984,20 @@ git add backend/app/api/chat.py backend/app/main.py backend/tests/test_api/test_
 git commit -m "feat: add Chat API for conversational interaction"
 ```
 
----
+***
 
 ## Phase 4: 前端基础
 
 ### Task 4.1: 前端项目初始化
 
 **Files:**
+
 - Create: `frontend/package.json`
 - Create: `frontend/tsconfig.json`
 - Create: `frontend/vite.config.ts`
 - Create: `frontend/index.html`
 - Create: `frontend/src/main.tsx`
 - Create: `frontend/src/App.tsx`
-
 - [ ] **Step 1: 初始化Vite项目**
 
 ```bash
@@ -2064,7 +2066,7 @@ cd frontend
 npm run dev
 ```
 
-Expected: 浏览器访问 http://localhost:3000 显示 "NyxAI 运维智能体"
+Expected: 浏览器访问 <http://localhost:3000> 显示 "NyxAI 运维智能体"
 
 - [ ] **Step 6: Commit**
 
@@ -2073,14 +2075,14 @@ git add frontend/
 git commit -m "feat: initialize frontend with Vite + React + Ant Design"
 ```
 
----
+***
 
 ### Task 4.2: API服务层
 
 **Files:**
+
 - Create: `frontend/src/services/api.ts`
 - Create: `frontend/src/types/index.ts`
-
 - [ ] **Step 1: 创建类型定义**
 
 ```typescript
@@ -2137,15 +2139,15 @@ git add frontend/src/services/api.ts frontend/src/types/index.ts
 git commit -m "feat: add frontend API service layer"
 ```
 
----
+***
 
 ### Task 4.3: 对话界面组件
 
 **Files:**
+
 - Create: `frontend/src/components/Chat/ChatWindow.tsx`
 - Create: `frontend/src/components/Chat/MessageInput.tsx`
 - Create: `frontend/src/stores/sessionStore.ts`
-
 - [ ] **Step 1: 创建状态管理**
 
 ```typescript
@@ -2314,17 +2316,17 @@ git add frontend/src/components/ frontend/src/stores/ frontend/src/App.tsx
 git commit -m "feat: add Chat UI components with state management"
 ```
 
----
+***
 
 ## Phase 5: 集成与部署
 
 ### Task 5.1: Docker配置
 
 **Files:**
+
 - Create: `docker-compose.yml`
 - Create: `Dockerfile.backend`
 - Create: `Dockerfile.frontend`
-
 - [ ] **Step 1: 创建后端Dockerfile**
 
 ```dockerfile
@@ -2401,13 +2403,13 @@ git add docker-compose.yml Dockerfile.backend Dockerfile.frontend
 git commit -m "feat: add Docker configuration for deployment"
 ```
 
----
+***
 
 ### Task 5.2: 最终集成测试
 
 **Files:**
-- Create: `backend/tests/test_integration.py`
 
+- Create: `backend/tests/test_integration.py`
 - [ ] **Step 1: Write integration test**
 
 ```python
@@ -2447,37 +2449,37 @@ git add backend/tests/test_integration.py
 git commit -m "test: add integration test for full workflow"
 ```
 
----
+***
 
 ## 总结
 
 本实现计划包含以下阶段：
 
-| Phase | 内容 | 任务数 |
-|-------|------|--------|
-| Phase 1 | 后端核心框架 | 9 |
-| Phase 2 | Agent核心实现 | 6 |
-| Phase 3 | Chat API | 1 |
-| Phase 4 | 前端基础 | 3 |
-| Phase 5 | 集成与部署 | 2 |
-| Phase 6 | 观测工具层 | 4 |
-| Phase 7 | 知识系统 | 3 |
-| Phase 8 | 高级功能 | 3 |
+| Phase   | 内容        | 任务数 |
+| ------- | --------- | --- |
+| Phase 1 | 后端核心框架    | 9   |
+| Phase 2 | Agent核心实现 | 6   |
+| Phase 3 | Chat API  | 1   |
+| Phase 4 | 前端基础      | 3   |
+| Phase 5 | 集成与部署     | 2   |
+| Phase 6 | 观测工具层     | 4   |
+| Phase 7 | 知识系统      | 3   |
+| Phase 8 | 高级功能      | 3   |
 
 **总计**: 31个任务
 
 每个任务遵循TDD原则：先写测试 → 运行失败 → 实现代码 → 测试通过 → 提交
 
----
+***
 
 ## Phase 6: 观测工具层
 
 ### Task 6.1: Prometheus工具
 
 **Files:**
+
 - Create: `backend/app/tools/prometheus.py`
 - Create: `backend/tests/test_tools/test_prometheus.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -2587,13 +2589,14 @@ class PrometheusTool:
         await self.client.aclose()
 ```
 
-- [ ] **Step 4: Create test_tools directory and run test**
+- [ ] **Step 4: Create test\_tools directory and run test**
 
 ```bash
 mkdir -p backend/tests/test_tools
 touch backend/tests/test_tools/__init__.py
 cd backend && uv run pytest tests/test_tools/test_prometheus.py -v
 ```
+
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -2603,14 +2606,14 @@ git add backend/app/tools/prometheus.py backend/tests/test_tools/
 git commit -m "feat: add Prometheus tool for metric queries"
 ```
 
----
+***
 
 ### Task 6.2: Loki日志工具
 
 **Files:**
+
 - Create: `backend/app/tools/loki.py`
 - Create: `backend/tests/test_tools/test_loki.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -2702,14 +2705,14 @@ git add backend/app/tools/loki.py backend/tests/test_tools/test_loki.py
 git commit -m "feat: add Loki tool for log queries"
 ```
 
----
+***
 
 ### Task 6.3: Jaeger链路追踪工具
 
 **Files:**
+
 - Create: `backend/app/tools/jaeger.py`
 - Create: `backend/tests/test_tools/test_jaeger.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -2807,14 +2810,14 @@ git add backend/app/tools/jaeger.py backend/tests/test_tools/test_jaeger.py
 git commit -m "feat: add Jaeger tool for trace queries"
 ```
 
----
+***
 
 ### Task 6.4: InfluxDB工具
 
 **Files:**
+
 - Create: `backend/app/tools/influxdb.py`
 - Create: `backend/tests/test_tools/test_influxdb.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -2904,16 +2907,16 @@ git add backend/app/tools/influxdb.py backend/tests/test_tools/test_influxdb.py
 git commit -m "feat: add InfluxDB tool for time-series queries"
 ```
 
----
+***
 
 ## Phase 7: 知识系统
 
 ### Task 7.1: 向量存储服务
 
 **Files:**
+
 - Create: `backend/app/services/vector_store.py`
 - Create: `backend/tests/test_services/test_vector_store.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -3032,14 +3035,14 @@ git add backend/app/services/vector_store.py backend/tests/test_services/test_ve
 git commit -m "feat: add VectorStore service with Chroma"
 ```
 
----
+***
 
 ### Task 7.2: 知识管理API
 
 **Files:**
+
 - Create: `backend/app/api/knowledge.py`
 - Create: `backend/tests/test_api/test_knowledge_api.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -3197,14 +3200,14 @@ git add backend/app/api/knowledge.py backend/app/main.py backend/tests/test_api/
 git commit -m "feat: add Knowledge management API"
 ```
 
----
+***
 
 ### Task 7.3: 知识检索工具
 
 **Files:**
+
 - Create: `backend/app/tools/knowledge.py`
 - Create: `backend/tests/test_tools/test_knowledge_tool.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -3314,16 +3317,16 @@ git add backend/app/tools/knowledge.py backend/tests/test_tools/test_knowledge_t
 git commit -m "feat: add Knowledge tool for semantic search"
 ```
 
----
+***
 
 ## Phase 8: 高级功能
 
 ### Task 8.1: Webhook入口
 
 **Files:**
+
 - Create: `backend/app/api/webhook.py`
 - Create: `backend/tests/test_api/test_webhook.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -3446,14 +3449,14 @@ git add backend/app/api/webhook.py backend/app/main.py backend/tests/test_api/te
 git commit -m "feat: add Webhook endpoint for alert processing"
 ```
 
----
+***
 
 ### Task 8.2: 流式Chat API
 
 **Files:**
+
 - Modify: `backend/app/api/chat.py`
 - Create: `backend/tests/test_api/test_chat_stream.py`
-
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -3550,14 +3553,14 @@ git add backend/app/api/chat.py backend/tests/test_api/test_chat_stream.py
 git commit -m "feat: add streaming Chat API with SSE"
 ```
 
----
+***
 
 ### Task 8.3: 前端证据链可视化
 
 **Files:**
+
 - Create: `frontend/src/components/EvidenceChain/EvidenceTimeline.tsx`
 - Create: `frontend/src/components/EvidenceChain/CausalGraph.tsx`
-
 - [ ] **Step 1: 创建证据链时间线组件**
 
 ```tsx
@@ -3666,3 +3669,4 @@ export function CausalGraph({ nodes, edges }: CausalGraphProps) {
 git add frontend/src/components/EvidenceChain/
 git commit -m "feat: add EvidenceChain visualization components"
 ```
+
