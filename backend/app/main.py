@@ -9,6 +9,7 @@ from app.storage.database import async_engine, Base
 from app.utils.logger import setup_logging
 from app.api.sessions import router as sessions_router
 from app.api.chat import router as chat_router
+from app.api.knowledge import router as knowledge_router
 
 settings = get_settings()
 
@@ -38,6 +39,7 @@ app.add_middleware(
 
 app.include_router(sessions_router)
 app.include_router(chat_router)
+app.include_router(knowledge_router)
 
 
 @app.get("/")

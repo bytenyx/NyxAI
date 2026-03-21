@@ -376,7 +376,6 @@ Expected: FAIL with "ModuleNotFoundError"
 ```python
 # backend/app/storage/database.py
 from collections.abc import AsyncGenerator
-from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
@@ -1396,13 +1395,13 @@ from datetime import datetime
 from typing import List
 import uuid
 
-from app.agents.base import Agent, AgentContext, AgentResult
+from app.agents.base import BaseAgent, AgentContext, AgentResult
 from app.models.evidence import Evidence, EvidenceType
 from app.models.session import Anomaly
 from app.services.llm import LLMService, LLMConfig
 
 
-class InvestigationAgent(Agent):
+class InvestigationAgent(BaseAgent):
     def __init__(self, llm_service: LLMService = None):
         super().__init__(name="investigation")
         self.llm = llm_service or LLMService(LLMConfig(provider="mock", model="mock"))
@@ -1516,12 +1515,12 @@ from datetime import datetime
 from typing import List
 import uuid
 
-from app.agents.base import Agent, AgentContext, AgentResult
+from app.agents.base import BaseAgent, AgentContext, AgentResult
 from app.models.evidence import Evidence, EvidenceNode, EvidenceType
 from app.services.llm import LLMService, LLMConfig
 
 
-class DiagnosisAgent(Agent):
+class DiagnosisAgent(BaseAgent):
     def __init__(self, llm_service: LLMService = None):
         super().__init__(name="diagnosis")
         self.llm = llm_service or LLMService(LLMConfig(provider="mock", model="mock"))
@@ -1649,12 +1648,12 @@ Expected: FAIL with "ModuleNotFoundError"
 # backend/app/agents/recovery.py
 from typing import List
 
-from app.agents.base import Agent, AgentContext, AgentResult
+from app.agents.base import BaseAgent, AgentContext, AgentResult
 from app.models.session import RiskLevel
 from app.services.llm import LLMService, LLMConfig
 
 
-class RecoveryAgent(Agent):
+class RecoveryAgent(BaseAgent):
     def __init__(self, llm_service: LLMService = None):
         super().__init__(name="recovery")
         self.llm = llm_service or LLMService(LLMConfig(provider="mock", model="mock"))
@@ -1776,13 +1775,13 @@ Expected: FAIL with "ModuleNotFoundError"
 # backend/app/agents/orchestrator.py
 from typing import Dict, Any
 
-from app.agents.base import Agent, AgentContext, AgentResult
+from app.agents.base import BaseAgent, AgentContext, AgentResult
 from app.agents.investigation import InvestigationAgent
 from app.agents.diagnosis import DiagnosisAgent
 from app.agents.recovery import RecoveryAgent
 
 
-class OrchestratorAgent(Agent):
+class OrchestratorAgent(BaseAgent):
     def __init__(self):
         super().__init__(name="orchestrator")
         self.investigation = InvestigationAgent()
@@ -2362,7 +2361,7 @@ RUN npm run build
 
 FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+RUN echo 'server { listen 80; location / { root /usr/share/nginx/html; try_files $uri $uri/ /index.html; } location /api { proxy_pass http://backend:8000; } }' > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 ```
@@ -2461,7 +2460,1209 @@ git commit -m "test: add integration test for full workflow"
 | Phase 3 | Chat API | 1 |
 | Phase 4 | 前端基础 | 3 |
 | Phase 5 | 集成与部署 | 2 |
+| Phase 6 | 观测工具层 | 4 |
+| Phase 7 | 知识系统 | 3 |
+| Phase 8 | 高级功能 | 3 |
 
-**总计**: 21个任务
+**总计**: 31个任务
 
 每个任务遵循TDD原则：先写测试 → 运行失败 → 实现代码 → 测试通过 → 提交
+
+---
+
+## Phase 6: 观测工具层
+
+### Task 6.1: Prometheus工具
+
+**Files:**
+- Create: `backend/app/tools/prometheus.py`
+- Create: `backend/tests/test_tools/test_prometheus.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# backend/tests/test_tools/test_prometheus.py
+import pytest
+from unittest.mock import AsyncMock, patch
+from app.tools.prometheus import PrometheusTool
+
+
+@pytest.mark.asyncio
+async def test_prometheus_tool_creation():
+    tool = PrometheusTool(url="http://localhost:9090")
+    assert tool.url == "http://localhost:9090"
+
+
+@pytest.mark.asyncio
+async def test_prometheus_query():
+    tool = PrometheusTool(url="http://localhost:9090")
+    
+    with patch("httpx.AsyncClient.get") as mock_get:
+        mock_get.return_value = AsyncMock(
+            json=lambda: {"data": {"result": [{"values": [[1, "95"]]}]}}
+        )
+        result = await tool.query("up", time="2024-01-01T00:00:00Z")
+        assert result is not None
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `cd backend && uv run pytest tests/test_tools/test_prometheus.py -v`
+Expected: FAIL with "ModuleNotFoundError"
+
+- [ ] **Step 3: Write minimal implementation**
+
+```python
+# backend/app/tools/prometheus.py
+from typing import Any, Dict, List, Optional
+import httpx
+
+
+class PrometheusTool:
+    def __init__(self, url: str):
+        self.url = url.rstrip("/")
+        self.client = httpx.AsyncClient(timeout=30.0)
+
+    async def query(
+        self,
+        query: str,
+        time: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        params = {"query": query}
+        if time:
+            params["time"] = time
+        
+        response = await self.client.get(
+            f"{self.url}/api/v1/query",
+            params=params,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def query_range(
+        self,
+        query: str,
+        start: str,
+        end: str,
+        step: str = "15s",
+    ) -> Dict[str, Any]:
+        response = await self.client.get(
+            f"{self.url}/api/v1/query_range",
+            params={"query": query, "start": start, "end": end, "step": step},
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def get_metric_anomalies(
+        self,
+        query: str,
+        threshold: float,
+        duration_minutes: int = 5,
+    ) -> List[Dict[str, Any]]:
+        from datetime import datetime, timedelta
+        
+        end = datetime.now()
+        start = end - timedelta(minutes=duration_minutes)
+        
+        result = await self.query_range(
+            query=query,
+            start=start.isoformat(),
+            end=end.isoformat(),
+        )
+        
+        anomalies = []
+        for item in result.get("data", {}).get("result", []):
+            for timestamp, value in item.get("values", []):
+                if float(value) > threshold:
+                    anomalies.append({
+                        "metric": item.get("metric", {}),
+                        "timestamp": timestamp,
+                        "value": float(value),
+                        "threshold": threshold,
+                    })
+        
+        return anomalies
+
+    async def close(self):
+        await self.client.aclose()
+```
+
+- [ ] **Step 4: Create test_tools directory and run test**
+
+```bash
+mkdir -p backend/tests/test_tools
+touch backend/tests/test_tools/__init__.py
+cd backend && uv run pytest tests/test_tools/test_prometheus.py -v
+```
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/app/tools/prometheus.py backend/tests/test_tools/
+git commit -m "feat: add Prometheus tool for metric queries"
+```
+
+---
+
+### Task 6.2: Loki日志工具
+
+**Files:**
+- Create: `backend/app/tools/loki.py`
+- Create: `backend/tests/test_tools/test_loki.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# backend/tests/test_tools/test_loki.py
+import pytest
+from app.tools.loki import LokiTool
+
+
+@pytest.mark.asyncio
+async def test_loki_tool_creation():
+    tool = LokiTool(url="http://localhost:3100")
+    assert tool.url == "http://localhost:3100"
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `cd backend && uv run pytest tests/test_tools/test_loki.py -v`
+Expected: FAIL with "ModuleNotFoundError"
+
+- [ ] **Step 3: Write minimal implementation**
+
+```python
+# backend/app/tools/loki.py
+from typing import Any, Dict, List, Optional
+import httpx
+
+
+class LokiTool:
+    def __init__(self, url: str):
+        self.url = url.rstrip("/")
+        self.client = httpx.AsyncClient(timeout=30.0)
+
+    async def query(
+        self,
+        query: str,
+        limit: int = 100,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        from datetime import datetime, timedelta
+        
+        if not start:
+            start = (datetime.now() - timedelta(hours=1)).isoformat()
+        if not end:
+            end = datetime.now().isoformat()
+        
+        response = await self.client.get(
+            f"{self.url}/loki/api/v1/query_range",
+            params={
+                "query": query,
+                "limit": limit,
+                "start": start,
+                "end": end,
+            },
+        )
+        response.raise_for_status()
+        return response.json().get("data", {}).get("result", [])
+
+    async def search_logs(
+        self,
+        pattern: str,
+        app: Optional[str] = None,
+        duration_minutes: int = 30,
+    ) -> List[Dict[str, Any]]:
+        from datetime import datetime, timedelta
+        
+        query = pattern
+        if app:
+            query = f'{{app="{app}"}} =~ `{pattern}`'
+        
+        end = datetime.now()
+        start = end - timedelta(minutes=duration_minutes)
+        
+        return await self.query(query, start=start.isoformat(), end=end.isoformat())
+
+    async def close(self):
+        await self.client.aclose()
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `cd backend && uv run pytest tests/test_tools/test_loki.py -v`
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/app/tools/loki.py backend/tests/test_tools/test_loki.py
+git commit -m "feat: add Loki tool for log queries"
+```
+
+---
+
+### Task 6.3: Jaeger链路追踪工具
+
+**Files:**
+- Create: `backend/app/tools/jaeger.py`
+- Create: `backend/tests/test_tools/test_jaeger.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# backend/tests/test_tools/test_jaeger.py
+import pytest
+from app.tools.jaeger import JaegerTool
+
+
+@pytest.mark.asyncio
+async def test_jaeger_tool_creation():
+    tool = JaegerTool(url="http://localhost:16686")
+    assert tool.url == "http://localhost:16686"
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `cd backend && uv run pytest tests/test_tools/test_jaeger.py -v`
+Expected: FAIL with "ModuleNotFoundError"
+
+- [ ] **Step 3: Write minimal implementation**
+
+```python
+# backend/app/tools/jaeger.py
+from typing import Any, Dict, List, Optional
+import httpx
+
+
+class JaegerTool:
+    def __init__(self, url: str):
+        self.url = url.rstrip("/")
+        self.client = httpx.AsyncClient(timeout=30.0)
+
+    async def get_trace(self, trace_id: str) -> Dict[str, Any]:
+        response = await self.client.get(
+            f"{self.url}/api/traces/{trace_id}",
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def search_traces(
+        self,
+        service: str,
+        operation: Optional[str] = None,
+        limit: int = 20,
+        lookback: str = "1h",
+    ) -> List[Dict[str, Any]]:
+        params = {
+            "service": service,
+            "limit": limit,
+            "lookback": lookback,
+        }
+        if operation:
+            params["operation"] = operation
+        
+        response = await self.client.get(
+            f"{self.url}/api/traces",
+            params=params,
+        )
+        response.raise_for_status()
+        return response.json().get("data", [])
+
+    async def get_slow_traces(
+        self,
+        service: str,
+        min_duration_ms: int = 1000,
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        params = {
+            "service": service,
+            "limit": limit,
+            "lookback": "1h",
+            "minDuration": f"{min_duration_ms}ms",
+        }
+        
+        response = await self.client.get(
+            f"{self.url}/api/traces",
+            params=params,
+        )
+        response.raise_for_status()
+        return response.json().get("data", [])
+
+    async def close(self):
+        await self.client.aclose()
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `cd backend && uv run pytest tests/test_tools/test_jaeger.py -v`
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/app/tools/jaeger.py backend/tests/test_tools/test_jaeger.py
+git commit -m "feat: add Jaeger tool for trace queries"
+```
+
+---
+
+### Task 6.4: InfluxDB工具
+
+**Files:**
+- Create: `backend/app/tools/influxdb.py`
+- Create: `backend/tests/test_tools/test_influxdb.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# backend/tests/test_tools/test_influxdb.py
+import pytest
+from app.tools.influxdb import InfluxDBTool
+
+
+def test_influxdb_tool_creation():
+    tool = InfluxDBTool(url="http://localhost:8086", token="test-token", org="test-org")
+    assert tool.url == "http://localhost:8086"
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `cd backend && uv run pytest tests/test_tools/test_influxdb.py -v`
+Expected: FAIL with "ModuleNotFoundError"
+
+- [ ] **Step 3: Write minimal implementation**
+
+```python
+# backend/app/tools/influxdb.py
+from typing import Any, Dict, List, Optional
+import httpx
+
+
+class InfluxDBTool:
+    def __init__(self, url: str, token: str, org: str):
+        self.url = url.rstrip("/")
+        self.token = token
+        self.org = org
+        self.client = httpx.AsyncClient(
+            timeout=30.0,
+            headers={"Authorization": f"Token {token}"},
+        )
+
+    async def query(
+        self,
+        query: str,
+        bucket: str,
+    ) -> List[Dict[str, Any]]:
+        response = await self.client.post(
+            f"{self.url}/api/v2/query",
+            params={"org": self.org},
+            headers={
+                "Content-Type": "application/vnd.flux",
+                "Accept": "application/json",
+            },
+            content=query,
+        )
+        response.raise_for_status()
+        return self._parse_flux_response(response.text)
+
+    def _parse_flux_response(self, text: str) -> List[Dict[str, Any]]:
+        results = []
+        lines = text.strip().split("\n")
+        headers = None
+        
+        for line in lines:
+            if not line:
+                continue
+            parts = line.split(",")
+            if headers is None:
+                headers = parts
+            else:
+                result = {}
+                for i, header in enumerate(headers):
+                    if i < len(parts):
+                        result[header] = parts[i]
+                results.append(result)
+        
+        return results
+
+    async def close(self):
+        await self.client.aclose()
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `cd backend && uv run pytest tests/test_tools/test_influxdb.py -v`
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/app/tools/influxdb.py backend/tests/test_tools/test_influxdb.py
+git commit -m "feat: add InfluxDB tool for time-series queries"
+```
+
+---
+
+## Phase 7: 知识系统
+
+### Task 7.1: 向量存储服务
+
+**Files:**
+- Create: `backend/app/services/vector_store.py`
+- Create: `backend/tests/test_services/test_vector_store.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# backend/tests/test_services/test_vector_store.py
+import pytest
+from app.services.vector_store import VectorStoreService
+
+
+@pytest.mark.asyncio
+async def test_vector_store_creation():
+    service = VectorStoreService(persist_dir="./test_chroma")
+    assert service is not None
+
+
+@pytest.mark.asyncio
+async def test_vector_store_add_and_search():
+    service = VectorStoreService(persist_dir="./test_chroma")
+    
+    await service.add(
+        collection="test_collection",
+        documents=["测试文档内容"],
+        metadatas=[{"source": "test"}],
+        ids=["test-001"],
+    )
+    
+    results = await service.search(
+        collection="test_collection",
+        query="测试",
+        n_results=1,
+    )
+    
+    assert len(results) > 0
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `cd backend && uv run pytest tests/test_services/test_vector_store.py -v`
+Expected: FAIL with "ModuleNotFoundError"
+
+- [ ] **Step 3: Write minimal implementation**
+
+```python
+# backend/app/services/vector_store.py
+from typing import Any, Dict, List, Optional
+import chromadb
+from chromadb.config import Settings
+
+
+class VectorStoreService:
+    def __init__(self, persist_dir: str = "./chroma_data"):
+        self.client = chromadb.Client(Settings(
+            chroma_db_impl="duckdb+parquet",
+            persist_directory=persist_dir,
+        ))
+
+    async def add(
+        self,
+        collection: str,
+        documents: List[str],
+        metadatas: Optional[List[Dict[str, Any]]] = None,
+        ids: Optional[List[str]] = None,
+    ) -> None:
+        col = self.client.get_or_create_collection(collection)
+        col.add(
+            documents=documents,
+            metadatas=metadatas,
+            ids=ids or [str(i) for i in range(len(documents))],
+        )
+
+    async def search(
+        self,
+        collection: str,
+        query: str,
+        n_results: int = 5,
+        where: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        col = self.client.get_or_create_collection(collection)
+        results = col.query(
+            query_texts=[query],
+            n_results=n_results,
+            where=where,
+        )
+        
+        return [
+            {
+                "id": results["ids"][0][i] if results["ids"] else None,
+                "document": results["documents"][0][i] if results["documents"] else None,
+                "metadata": results["metadatas"][0][i] if results["metadatas"] else None,
+                "distance": results["distances"][0][i] if results["distances"] else None,
+            }
+            for i in range(min(n_results, len(results["ids"][0]) if results["ids"] else 0))
+        ]
+
+    async def delete(
+        self,
+        collection: str,
+        ids: Optional[List[str]] = None,
+    ) -> None:
+        col = self.client.get_or_create_collection(collection)
+        if ids:
+            col.delete(ids=ids)
+
+    async def list_collections(self) -> List[str]:
+        return [c.name for c in self.client.list_collections()]
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `cd backend && uv run pytest tests/test_services/test_vector_store.py -v`
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/app/services/vector_store.py backend/tests/test_services/test_vector_store.py
+git commit -m "feat: add VectorStore service with Chroma"
+```
+
+---
+
+### Task 7.2: 知识管理API
+
+**Files:**
+- Create: `backend/app/api/knowledge.py`
+- Create: `backend/tests/test_api/test_knowledge_api.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# backend/tests/test_api/test_knowledge_api.py
+from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+
+def test_create_knowledge():
+    response = client.post(
+        "/api/v1/knowledge",
+        json={
+            "knowledge_type": "app",
+            "title": "MySQL服务",
+            "content": "MySQL主从复制配置说明",
+            "metadata": {"app": "mysql", "env": "prod"},
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["title"] == "MySQL服务"
+
+
+def test_list_knowledge():
+    client.post(
+        "/api/v1/knowledge",
+        json={
+            "knowledge_type": "app",
+            "title": "Test App",
+            "content": "Test content",
+        },
+    )
+    
+    response = client.get("/api/v1/knowledge?knowledge_type=app")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `cd backend && uv run pytest tests/test_api/test_knowledge_api.py -v`
+Expected: FAIL with "404"
+
+- [ ] **Step 3: Write minimal implementation**
+
+```python
+# backend/app/api/knowledge.py
+from typing import List, Optional
+import uuid
+
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.storage.database import get_async_session
+from app.storage.models import KnowledgeDB
+
+router = APIRouter(prefix="/api/v1/knowledge", tags=["knowledge"])
+
+
+class CreateKnowledgeRequest(BaseModel):
+    knowledge_type: str
+    title: str
+    content: str
+    metadata: dict = {}
+
+
+class KnowledgeResponse(BaseModel):
+    id: str
+    knowledge_type: str
+    title: str
+    content: str
+    metadata: dict
+    created_at: str
+    updated_at: str
+
+
+@router.post("", response_model=KnowledgeResponse)
+async def create_knowledge(
+    request: CreateKnowledgeRequest,
+    db_session: AsyncSession = Depends(get_async_session),
+):
+    knowledge_id = str(uuid.uuid4())
+    
+    db_knowledge = KnowledgeDB(
+        id=knowledge_id,
+        knowledge_type=request.knowledge_type,
+        title=request.title,
+        content=request.content,
+        metadata=request.metadata,
+    )
+    db_session.add(db_knowledge)
+    await db_session.flush()
+    
+    return KnowledgeResponse(
+        id=knowledge_id,
+        knowledge_type=request.knowledge_type,
+        title=request.title,
+        content=request.content,
+        metadata=request.metadata,
+        created_at=db_knowledge.created_at.isoformat(),
+        updated_at=db_knowledge.updated_at.isoformat(),
+    )
+
+
+@router.get("", response_model=List[KnowledgeResponse])
+async def list_knowledge(
+    knowledge_type: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    db_session: AsyncSession = Depends(get_async_session),
+):
+    query = select(KnowledgeDB).order_by(KnowledgeDB.created_at.desc())
+    
+    if knowledge_type:
+        query = query.where(KnowledgeDB.knowledge_type == knowledge_type)
+    
+    query = query.limit(limit).offset(offset)
+    
+    result = await db_session.execute(query)
+    knowledge_list = result.scalars().all()
+    
+    return [
+        KnowledgeResponse(
+            id=k.id,
+            knowledge_type=k.knowledge_type,
+            title=k.title,
+            content=k.content,
+            metadata=k.metadata,
+            created_at=k.created_at.isoformat(),
+            updated_at=k.updated_at.isoformat(),
+        )
+        for k in knowledge_list
+    ]
+```
+
+- [ ] **Step 4: Register router and run test**
+
+```python
+# Add to backend/app/main.py
+from app.api.knowledge import router as knowledge_router
+app.include_router(knowledge_router)
+```
+
+Run: `cd backend && uv run pytest tests/test_api/test_knowledge_api.py -v`
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/app/api/knowledge.py backend/app/main.py backend/tests/test_api/test_knowledge_api.py
+git commit -m "feat: add Knowledge management API"
+```
+
+---
+
+### Task 7.3: 知识检索工具
+
+**Files:**
+- Create: `backend/app/tools/knowledge.py`
+- Create: `backend/tests/test_tools/test_knowledge_tool.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# backend/tests/test_tools/test_knowledge_tool.py
+import pytest
+from app.tools.knowledge import KnowledgeTool
+
+
+@pytest.mark.asyncio
+async def test_knowledge_tool_creation():
+    tool = KnowledgeTool(persist_dir="./test_chroma")
+    assert tool is not None
+
+
+@pytest.mark.asyncio
+async def test_knowledge_tool_search():
+    tool = KnowledgeTool(persist_dir="./test_chroma")
+    
+    await tool.add_knowledge(
+        knowledge_type="fault_case",
+        title="MySQL高CPU案例",
+        content="慢查询导致CPU使用率过高",
+        metadata={"app": "mysql"},
+    )
+    
+    results = await tool.search_similar("CPU过高")
+    assert len(results) >= 0
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `cd backend && uv run pytest tests/test_tools/test_knowledge_tool.py -v`
+Expected: FAIL with "ModuleNotFoundError"
+
+- [ ] **Step 3: Write minimal implementation**
+
+```python
+# backend/app/tools/knowledge.py
+from typing import Any, Dict, List, Optional
+import uuid
+
+from app.services.vector_store import VectorStoreService
+
+
+class KnowledgeTool:
+    def __init__(self, persist_dir: str = "./chroma_data"):
+        self.vector_store = VectorStoreService(persist_dir=persist_dir)
+
+    async def add_knowledge(
+        self,
+        knowledge_type: str,
+        title: str,
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        knowledge_id = str(uuid.uuid4())
+        
+        await self.vector_store.add(
+            collection=f"knowledge_{knowledge_type}",
+            documents=[f"{title}\n{content}"],
+            metadatas=[{
+                "knowledge_type": knowledge_type,
+                "title": title,
+                **(metadata or {}),
+            }],
+            ids=[knowledge_id],
+        )
+        
+        return knowledge_id
+
+    async def search_similar(
+        self,
+        query: str,
+        knowledge_type: Optional[str] = None,
+        n_results: int = 5,
+    ) -> List[Dict[str, Any]]:
+        collection = f"knowledge_{knowledge_type}" if knowledge_type else "knowledge_all"
+        
+        return await self.vector_store.search(
+            collection=collection,
+            query=query,
+            n_results=n_results,
+        )
+
+    async def search_by_type(
+        self,
+        query: str,
+        knowledge_type: str,
+        n_results: int = 5,
+    ) -> List[Dict[str, Any]]:
+        return await self.search_similar(
+            query=query,
+            knowledge_type=knowledge_type,
+            n_results=n_results,
+        )
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `cd backend && uv run pytest tests/test_tools/test_knowledge_tool.py -v`
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/app/tools/knowledge.py backend/tests/test_tools/test_knowledge_tool.py
+git commit -m "feat: add Knowledge tool for semantic search"
+```
+
+---
+
+## Phase 8: 高级功能
+
+### Task 8.1: Webhook入口
+
+**Files:**
+- Create: `backend/app/api/webhook.py`
+- Create: `backend/tests/test_api/test_webhook.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# backend/tests/test_api/test_webhook.py
+from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+
+def test_webhook_alert():
+    response = client.post(
+        "/webhook/alert",
+        json={
+            "alerts": [
+                {
+                    "status": "firing",
+                    "labels": {"alertname": "HighCPU", "service": "mysql"},
+                    "annotations": {"summary": "CPU usage > 90%"},
+                }
+            ]
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "session_id" in data
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `cd backend && uv run pytest tests/test_api/test_webhook.py -v`
+Expected: FAIL with "404"
+
+- [ ] **Step 3: Write minimal implementation**
+
+```python
+# backend/app/api/webhook.py
+from typing import Any, Dict, List
+
+from fastapi import APIRouter, Depends, BackgroundTasks
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.agents.base import AgentContext
+from app.agents.orchestrator import OrchestratorAgent
+from app.storage.database import get_async_session
+from app.storage.repositories.session import SessionRepository
+
+router = APIRouter(prefix="/webhook", tags=["webhook"])
+
+
+class AlertLabel(BaseModel):
+    alertname: str
+    service: str
+
+
+class Alert(BaseModel):
+    status: str
+    labels: AlertLabel
+    annotations: Dict[str, str]
+
+
+class AlertWebhookRequest(BaseModel):
+    alerts: List[Alert]
+
+
+class WebhookResponse(BaseModel):
+    session_id: str
+    status: str
+
+
+@router.post("/alert", response_model=WebhookResponse)
+async def receive_alert(
+    request: AlertWebhookRequest,
+    background_tasks: BackgroundTasks,
+    db_session: AsyncSession = Depends(get_async_session),
+):
+    repo = SessionRepository(db_session)
+    
+    alert = request.alerts[0] if request.alerts else None
+    if not alert:
+        return WebhookResponse(session_id="", status="no_alerts")
+    
+    session = await repo.create(
+        trigger_type="webhook",
+        trigger_source=f"prometheus:{alert.labels.alertname}",
+    )
+    
+    query = f"告警: {alert.labels.alertname}\n服务: {alert.labels.service}\n详情: {alert.annotations.get('summary', '无')}"
+    
+    orchestrator = OrchestratorAgent()
+    context = AgentContext(
+        session_id=session.id,
+        query=query,
+    )
+    
+    background_tasks.add_task(orchestrator.execute, context)
+    
+    return WebhookResponse(
+        session_id=session.id,
+        status="processing",
+    )
+```
+
+- [ ] **Step 4: Register router and run test**
+
+```python
+# Add to backend/app/main.py
+from app.api.webhook import router as webhook_router
+app.include_router(webhook_router)
+```
+
+Run: `cd backend && uv run pytest tests/test_api/test_webhook.py -v`
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/app/api/webhook.py backend/app/main.py backend/tests/test_api/test_webhook.py
+git commit -m "feat: add Webhook endpoint for alert processing"
+```
+
+---
+
+### Task 8.2: 流式Chat API
+
+**Files:**
+- Modify: `backend/app/api/chat.py`
+- Create: `backend/tests/test_api/test_chat_stream.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# backend/tests/test_api/test_chat_stream.py
+from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+
+def test_chat_stream():
+    with client.stream(
+        "POST",
+        "/api/v1/chat/stream",
+        json={"message": "数据库延迟"},
+    ) as response:
+        assert response.status_code == 200
+        content = b""
+        for chunk in response.iter_bytes():
+            content += chunk
+        assert len(content) > 0
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `cd backend && uv run pytest tests/test_api/test_chat_stream.py -v`
+Expected: FAIL with "404"
+
+- [ ] **Step 3: Add streaming endpoint to chat.py**
+
+```python
+# Add to backend/app/api/chat.py
+from fastapi.responses import StreamingResponse
+import json
+import asyncio
+
+
+@router.post("/stream")
+async def chat_stream(
+    request: ChatRequest,
+    db_session: AsyncSession = Depends(get_async_session),
+):
+    repo = SessionRepository(db_session)
+    
+    if not request.session_id:
+        session = await repo.create(
+            trigger_type="chat",
+            trigger_source="user-input",
+        )
+        session_id = session.id
+    else:
+        session_id = request.session_id
+    
+    async def generate():
+        orchestrator = OrchestratorAgent()
+        context = AgentContext(
+            session_id=session_id,
+            query=request.message,
+        )
+        
+        yield f"data: {json.dumps({'type': 'status', 'content': 'investigating'})}\n\n"
+        await asyncio.sleep(0.1)
+        
+        result = await orchestrator.execute(context)
+        
+        yield f"data: {json.dumps({'type': 'status', 'content': 'diagnosing'})}\n\n"
+        await asyncio.sleep(0.1)
+        
+        if result.success:
+            root_cause = result.data.get("diagnosis", {}).get("root_cause", "")
+            yield f"data: {json.dumps({'type': 'root_cause', 'content': root_cause})}\n\n"
+            
+            actions = result.data.get("recovery", {}).get("actions", [])
+            for action in actions:
+                yield f"data: {json.dumps({'type': 'action', 'content': action.get('description', '')})}\n\n"
+        
+        yield f"data: {json.dumps({'type': 'done', 'session_id': session_id})}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+    )
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `cd backend && uv run pytest tests/test_api/test_chat_stream.py -v`
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/app/api/chat.py backend/tests/test_api/test_chat_stream.py
+git commit -m "feat: add streaming Chat API with SSE"
+```
+
+---
+
+### Task 8.3: 前端证据链可视化
+
+**Files:**
+- Create: `frontend/src/components/EvidenceChain/EvidenceTimeline.tsx`
+- Create: `frontend/src/components/EvidenceChain/CausalGraph.tsx`
+
+- [ ] **Step 1: 创建证据链时间线组件**
+
+```tsx
+// frontend/src/components/EvidenceChain/EvidenceTimeline.tsx
+import { Timeline, Card, Tag } from 'antd'
+import { CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons'
+
+interface EvidenceNode {
+  id: string
+  description: string
+  evidence_type: 'metric' | 'log' | 'trace' | 'knowledge'
+  timestamp: string
+  confidence: number
+}
+
+interface EvidenceTimelineProps {
+  nodes: EvidenceNode[]
+}
+
+const typeColors = {
+  metric: 'blue',
+  log: 'green',
+  trace: 'orange',
+  knowledge: 'purple',
+}
+
+export function EvidenceTimeline({ nodes }: EvidenceTimelineProps) {
+  return (
+    <Card title="证据链时间线" style={{ marginBottom: 16 }}>
+      <Timeline
+        items={nodes.map((node) => ({
+          color: typeColors[node.evidence_type],
+          dot: node.confidence > 0.8 ? <CheckCircleOutlined /> : <ClockCircleOutlined />,
+          children: (
+            <div>
+              <Tag color={typeColors[node.evidence_type]}>{node.evidence_type}</Tag>
+              <span>{node.description}</span>
+              <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
+                置信度: {(node.confidence * 100).toFixed(0)}%
+              </div>
+            </div>
+          ),
+        }))}
+      />
+    </Card>
+  )
+}
+```
+
+- [ ] **Step 2: 创建因果关系图组件**
+
+```tsx
+// frontend/src/components/EvidenceChain/CausalGraph.tsx
+import { Card } from 'antd'
+
+interface CausalNode {
+  id: string
+  label: string
+  type: 'cause' | 'effect' | 'root'
+}
+
+interface CausalEdge {
+  source: string
+  target: string
+  label?: string
+}
+
+interface CausalGraphProps {
+  nodes: CausalNode[]
+  edges: CausalEdge[]
+}
+
+export function CausalGraph({ nodes, edges }: CausalGraphProps) {
+  const nodeColors = {
+    root: '#f5222d',
+    cause: '#fa8c16',
+    effect: '#1890ff',
+  }
+
+  return (
+    <Card title="因果关系图" style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {nodes.map((node) => (
+          <div
+            key={node.id}
+            style={{
+              padding: 12,
+              borderRadius: 8,
+              background: nodeColors[node.type] + '20',
+              borderLeft: `4px solid ${nodeColors[node.type]}`,
+            }}
+          >
+            <div style={{ fontWeight: 'bold' }}>{node.label}</div>
+            <div style={{ fontSize: 12, color: '#666' }}>{node.type}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add frontend/src/components/EvidenceChain/
+git commit -m "feat: add EvidenceChain visualization components"
+```
