@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -12,7 +12,6 @@ from app.storage.database import get_async_session
 from app.storage.repositories.session_repo import SessionRepository
 from app.storage.repositories.evidence_repo import EvidenceRepository
 import json
-import asyncio
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
 
@@ -26,18 +25,6 @@ class ChatResponse(BaseModel):
     session_id: str
     response: str
     status: str
-
-
-class StreamStatus(BaseModel):
-    stage: str
-    message: str
-    progress: int = 0100
-
-
-class StreamEvent(BaseModel):
-    type: str
-    content: str
-    data: Optional[dict] = None
 
 
 @router.post("/message", response_model=ChatResponse)
@@ -79,16 +66,22 @@ async def chat_message(
     
     if result.success:
         recovery = result.data.get("recovery", {})
-        response_text = recovery.get("actions", [{}])[0].get("description", "处理完成") if recovery.get("actions") else "处理完成"
-        if result.data.get("diagnosis", {}).get("root_cause"):
-            response_text = f"根因分析: {result.data['diagnosis']['root_cause'][:200]}\n建议: {response_text}"
+        actions = recovery.get("actions", [])
+        if actions:
+            response_text = actions[0].get("description", "处理完成")
+        else:
+            response_text = "处理完成"
+        
+        diagnosis = result.data.get("diagnosis", {})
+        if diagnosis.get("root_cause"):
+            response_text = f"根因分析: {diagnosis['root_cause'][:200]}\n建议: {response_text}"
     else:
         response_text = f"处理失败: {result.error}"
     
     return ChatResponse(
         session_id=session_id,
         response=response_text,
-        status=result.data.get("status", "unknown"),
+        status=result.data.get("status", "unknown") if result.success else "failed",
     )
 
 
@@ -148,7 +141,7 @@ async def chat_stream(
             
             anomalies = investigation.get("anomalies", [])
             if anomalies:
-                for i, anomaly in enumerate(anomalies):
+                for anomaly in anomalies:
                     yield f"data: {json.dumps({'type': 'anomaly', 'anomaly': anomaly}, ensure_ascii=False)}\n"
             
             if diagnosis.get("root_cause"):
@@ -160,7 +153,7 @@ async def chat_stream(
             
             actions = recovery.get("actions", [])
             if actions:
-                for i, action in enumerate(actions):
+                for action in actions:
                     yield f"data: {json.dumps({'type': 'action', 'action': action}, ensure_ascii=False)}\n"
             
             yield f"data: {json.dumps({'type': 'done', 'session_id': session_id, 'status': 'completed'}, ensure_ascii=False)}\n"
@@ -171,3 +164,28 @@ async def chat_stream(
         generate(),
         media_type="text/event-stream",
     )
+
+
+@router.get("/{session_id}/evidence")
+async def get_session_evidence(
+    session_id: str,
+    db_session: AsyncSession = Depends(get_async_session),
+):
+    evidence_repo = EvidenceRepository(db_session)
+    evidence_list = await evidence_repo.get_by_session(session_id)
+    
+    return {
+        "session_id": session_id,
+        "evidence": [
+            {
+                "id": e.id,
+                "evidence_type": e.evidence_type,
+                "description": e.description,
+                "source_data": e.source_data,
+                "source_system": e.source_system,
+                "timestamp": e.timestamp.isoformat() if e.timestamp else None,
+                "confidence": e.confidence,
+            }
+            for e in evidence_list
+        ],
+    }
