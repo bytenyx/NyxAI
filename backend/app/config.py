@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     LLM_API_KEY: Optional[str] = None
     LLM_BASE_URL: Optional[str] = None
     
+    SKILLS_DIR: str = "backend/skills"
+    
     CHROMA_PERSIST_DIR: str = "./chroma_data"
     
     PROMETHEUS_URL: Optional[str] = None
@@ -34,7 +36,7 @@ class Settings(BaseSettings):
         if self.ENVIRONMENT == "development":
             return ["*"]
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
-
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
