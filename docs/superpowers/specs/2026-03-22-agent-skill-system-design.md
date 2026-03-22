@@ -186,85 +186,148 @@ class SkillWorkflow(BaseModel):
 
 ## 技能加载和管理
 
-### 1. 技能插件结构
+### 1. 技能插件结构（遵循Anthropic Skill规范）
 
 ```
 skills/
 ├── __init__.py
 ├── system/
 │   ├── __init__.py
-│   ├── file_operations.py
-│   ├── network_tools.py
-│   └── data_processing.py
+│   ├── file_operations/
+│   │   ├── SKILL.md        # 技能元数据和配置
+│   │   ├── main.py         # 技能实现
+│   │   └── requirements.txt # 技能依赖
+│   ├── network_tools/
+│   │   ├── SKILL.md
+│   │   ├── main.py
+│   │   └── requirements.txt
+│   └── data_processing/
+│       ├── SKILL.md
+│       ├── main.py
+│       └── requirements.txt
 ├── business/
 │   ├── __init__.py
-│   ├── alert_management.py
-│   ├── incident_response.py
-│   └── performance_analysis.py
+│   ├── alert_management/
+│   │   ├── SKILL.md
+│   │   ├── main.py
+│   │   └── requirements.txt
+│   ├── incident_response/
+│   │   ├── SKILL.md
+│   │   ├── main.py
+│   │   └── requirements.txt
+│   └── performance_analysis/
+│       ├── SKILL.md
+│       ├── main.py
+│       └── requirements.txt
 └── third_party/
     ├── __init__.py
-    └── external_api_integration.py
+    └── external_api_integration/
+        ├── SKILL.md
+        ├── main.py
+        └── requirements.txt
 ```
 
-### 2. 技能插件实现
+### 2. Anthropic Skill规范
 
-每个技能插件需要实现以下接口：
+每个技能需要包含以下文件：
+
+#### 2.1 SKILL.md文件
+
+```markdown
+# File Operations Skill
+
+## Description
+提供文件读写操作功能
+
+## Inputs
+- file_path: string (required) - 文件路径
+- operation: string (required) - 操作类型: read, write, delete
+- content: string (optional) - 文件内容（写入操作时需要）
+
+## Outputs
+- result: object - 操作结果
+- success: boolean - 操作是否成功
+- error: string (optional) - 错误信息
+
+## Dependencies
+- None
+
+## Example Usage
+```python
+{
+  "file_path": "/path/to/file.txt",
+  "operation": "read"
+}
+```
+
+## Author
+NyxAI Team
+
+## Version
+1.0.0
+
+## Category
+system
+```
+
+#### 2.2 技能实现（main.py）
 
 ```python
-from abc import ABC, abstractmethod
-from typing import Dict, Any
-from pydantic import BaseModel
+from typing import Dict, Any, Optional
 
-class SkillInterface(ABC):
-    @abstractmethod
-    def get_metadata(self) -> Dict[str, Any]:
-        """获取技能元数据"""
+class FileOperationsSkill:
+    def __init__(self):
         pass
     
-    @abstractmethod
     async def execute(self, parameters: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """执行技能"""
-        pass
-
-class FileOperationsSkill(SkillInterface):
-    def get_metadata(self) -> Dict[str, Any]:
-        return {
-            "id": "file_operations",
-            "name": "file_operations",
-            "display_name": "文件操作",
-            "description": "提供文件读写操作功能",
-            "version": "1.0.0",
-            "author": "NyxAI Team",
-            "category": "system",
-            "parameters": [
-                {
-                    "name": "file_path",
-                    "type": "string",
-                    "description": "文件路径",
-                    "required": True
-                },
-                {
-                    "name": "operation",
-                    "type": "string",
-                    "description": "操作类型: read, write, delete",
-                    "required": True
-                },
-                {
-                    "name": "content",
-                    "type": "string",
-                    "description": "文件内容（写入操作时需要）",
-                    "required": False
+        """执行文件操作技能"""
+        file_path = parameters.get("file_path")
+        operation = parameters.get("operation")
+        content = parameters.get("content")
+        
+        try:
+            if operation == "read":
+                with open(file_path, "r", encoding="utf-8") as f:
+                    file_content = f.read()
+                return {
+                    "success": True,
+                    "result": {"content": file_content},
+                    "error": None
                 }
-            ],
-            "returns": {
-                "type": "object",
-                "description": "操作结果"
+            elif operation == "write":
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                return {
+                    "success": True,
+                    "result": {"message": "File written successfully"},
+                    "error": None
+                }
+            elif operation == "delete":
+                import os
+                os.remove(file_path)
+                return {
+                    "success": True,
+                    "result": {"message": "File deleted successfully"},
+                    "error": None
+                }
+            else:
+                return {
+                    "success": False,
+                    "result": None,
+                    "error": f"Invalid operation: {operation}"
+                }
+        except Exception as e:
+            return {
+                "success": False,
+                "result": None,
+                "error": str(e)
             }
-        }
-    
-    async def execute(self, parameters: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        # 实现文件操作逻辑
-        pass
+```
+
+#### 2.3 技能依赖（requirements.txt）
+
+```
+# No dependencies required for this skill
 ```
 
 ### 3. 技能加载机制
@@ -418,7 +481,7 @@ class BaseAgentWithSkills(BaseAgent):
 
 ### 3. 前端集成
 
-前端通过WebSocket接收技能执行相关的消息，并在UI中展示技能执行过程和结果：
+前端通过WebSocket接收技能执行相关的消息，并在UI中展示技能执行过程和结果（遵循Anthropic Skill规范）：
 
 ```typescript
 interface SkillExecutionMessage {
@@ -435,17 +498,73 @@ const handleSkillMessage = (message: SkillExecutionMessage) => {
   switch (message.type) {
     case 'skill_start':
       // 显示技能开始执行
+      console.log(`Skill ${message.skill_id} started`);
       break;
     case 'skill_executing':
       // 显示技能执行中
+      console.log(`Skill ${message.skill_id} executing`, message.payload);
       break;
     case 'skill_complete':
-      // 显示技能执行完成
+      // 显示技能执行完成（遵循Anthropic Skill规范的结果格式）
+      const { success, result, error } = message.payload;
+      if (success) {
+        console.log(`Skill ${message.skill_id} completed successfully`, result);
+        // 显示成功结果
+      } else {
+        console.error(`Skill ${message.skill_id} failed`, error);
+        // 显示错误信息
+      }
       break;
     case 'skill_error':
       // 显示技能执行错误
+      console.error(`Skill ${message.skill_id} error`, message.payload);
       break;
   }
+};
+
+// 技能管理界面
+const SkillManagementPage = () => {
+  const [skills, setSkills] = useState<any[]>([]);
+  
+  // 加载技能列表
+  useEffect(() => {
+    const loadSkills = async () => {
+      const response = await fetch('/api/skills');
+      const data = await response.json();
+      setSkills(data);
+    };
+    loadSkills();
+  }, []);
+  
+  return (
+    <div className="skill-management">
+      <h2>技能管理</h2>
+      <div className="skill-list">
+        {skills.map(skill => (
+          <div key={skill.id} className="skill-card">
+            <h3>{skill.display_name}</h3>
+            <p>{skill.description}</p>
+            <div className="skill-meta">
+              <span>版本: {skill.version}</span>
+              <span>作者: {skill.author}</span>
+              <span>类别: {skill.category}</span>
+            </div>
+            <div className="skill-inputs">
+              <h4>输入参数</h4>
+              {skill.parameters.map((param: any) => (
+                <div key={param.name} className="param-item">
+                  <span>{param.name}</span>
+                  <span>{param.type}</span>
+                  <span>{param.required ? '必填' : '可选'}</span>
+                  <span>{param.description}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 };
 ```
 
@@ -476,15 +595,17 @@ const handleSkillMessage = (message: SkillExecutionMessage) => {
 ## 开发计划建议
 
 ### Phase 1: 技能系统核心（2周）
-- 技能管理器和执行引擎实现
-- 技能插件系统实现
-- 技能元数据和执行模型定义
+- 技能管理器和执行引擎实现（支持Anthropic Skill规范）
+- 技能插件系统实现（基于目录结构和SKILL.md文件）
+- SKILL.md解析器实现
+- 技能依赖管理系统实现
 - 与现有Agent框架集成
 
 ### Phase 2: 内置技能实现（2周）
-- 系统工具技能（文件操作、网络工具等）
-- 业务逻辑技能（告警管理、事件响应等）
-- 技能测试和验证
+- 系统工具技能（文件操作、网络工具等）- 遵循Anthropic Skill规范
+- 业务逻辑技能（告警管理、事件响应等）- 遵循Anthropic Skill规范
+- 技能测试和验证框架
+- 技能示例和文档
 
 ### Phase 3: 技能组合和编排（1周）
 - 技能组合器实现
@@ -492,23 +613,26 @@ const handleSkillMessage = (message: SkillExecutionMessage) => {
 - 技能工作流测试
 
 ### Phase 4: 前端集成（1周）
-- 技能管理界面
+- 技能管理界面（支持Anthropic Skill规范）
 - 技能执行过程展示
 - 技能配置界面
+- SKILL.md编辑器
 
 ### Phase 5: 文档和测试（1周）
-- 技能开发文档
+- 技能开发文档（Anthropic Skill规范指南）
 - 技能使用文档
 - 系统测试和性能优化
+- 技能开发工具链
 
 ## 结论
 
-本设计文档提供了一个基于插件架构的Agent Skill系统实现方案，满足了Agent支持技能扩展的需求。系统具有高度模块化、易于扩展和测试的特点，能够与现有PydanticAI框架无缝集成，为Agent提供丰富的技能扩展能力。
+本设计文档提供了一个基于插件架构的Agent Skill系统实现方案，满足了Agent支持技能扩展的需求，并严格遵循Anthropic Skill规范。系统具有高度模块化、易于扩展和测试的特点，能够与现有PydanticAI框架无缝集成，为Agent提供丰富的技能扩展能力。
 
 通过本方案的实现，Agent将能够：
-- 加载和使用各种技能来增强其功能
+- 加载和使用各种遵循Anthropic Skill规范的技能来增强其功能
 - 组合多个技能形成复杂的工作流
-- 灵活扩展和管理技能
+- 灵活扩展和管理技能，支持热插拔和版本管理
 - 与前端进行实时交互，展示技能执行过程
+- 为技能开发者提供清晰的规范和工具链
 
-这将大大提高Agent的能力和灵活性，使其能够更好地应对各种复杂的运维场景。
+这将大大提高Agent的能力和灵活性，使其能够更好地应对各种复杂的运维场景，同时为技能生态系统的构建奠定坚实基础。
