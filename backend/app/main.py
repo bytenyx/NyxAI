@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.storage.database import async_engine, Base
 from app.utils.logger import setup_logging
+from app.skills.registry import SkillRegistry
 from app.api.sessions import router as sessions_router
 from app.api.chat import router as chat_router
 from app.api.knowledge import router as knowledge_router
@@ -22,6 +24,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging()
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    
+    skills_dir = Path(settings.SKILLS_DIR)
+    skill_registry = SkillRegistry(skills_dir)
+    skill_registry.scan()
+    app.state.skill_registry = skill_registry
+    
     yield
 
 
