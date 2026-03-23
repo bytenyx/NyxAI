@@ -1,8 +1,7 @@
 import pytest
 import tempfile
 from pathlib import Path
-from app.agents.base import AgentContext, BaseAgent
-from app.skills.registry import SkillRegistry
+from app.agents.base import AgentContext, BaseAgent, AgentResult
 
 
 def test_agent_context_allowed_skills():
@@ -11,6 +10,11 @@ def test_agent_context_allowed_skills():
         allowed_skills=["brainstorming", "debugging"]
     )
     assert context.allowed_skills == ["brainstorming", "debugging"]
+
+
+class MockAgent(BaseAgent):
+    async def execute(self, context: AgentContext) -> AgentResult:
+        return AgentResult(success=True)
 
 
 def test_base_agent_skill_prompt():
@@ -23,10 +27,11 @@ def test_base_agent_skill_prompt():
             "---\nname: test\ndescription: Test skill description\n---\n"
         )
         
+        from app.skills.registry import SkillRegistry
         registry = SkillRegistry(skills_dir)
         registry.scan()
         
-        agent = BaseAgent("test-agent", skill_registry=registry)
+        agent = MockAgent("test-agent", skill_registry=registry)
         prompt = agent.build_skill_prompt(["test"])
         
         assert "test" in prompt
@@ -44,10 +49,11 @@ def test_base_agent_load_skill():
             "---\nname: test\ndescription: Test\n---\n# Test Skill"
         )
         
+        from app.skills.registry import SkillRegistry
         registry = SkillRegistry(skills_dir)
         registry.scan()
         
-        agent = BaseAgent("test-agent", skill_registry=registry)
+        agent = MockAgent("test-agent", skill_registry=registry)
         skill = agent.load_skill("test")
         
         assert skill is not None
