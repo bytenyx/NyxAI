@@ -11,6 +11,9 @@ from app.models.agent import AgentExecution
 from app.storage.database import get_async_session
 from app.storage.repositories.session_repo import SessionRepository
 from app.storage.repositories.agent_exec_repo import AgentExecutionRepository
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/sessions", tags=["sessions"])
 
@@ -26,11 +29,14 @@ async def create_session(
     request: CreateSessionRequest,
     db_session: AsyncSession = Depends(get_async_session),
 ):
+    logger.info(f"[API] POST /api/v1/sessions - Creating session trigger_type={request.trigger_type} trigger_source={request.trigger_source}")
     try:
         repo = SessionRepository(db_session)
         session = await repo.create(request.trigger_type, request.trigger_source, title=request.title)
+        logger.info(f"[API] Session created successfully session_id={session.id}")
         return ApiResponse.success_response(data=session, message="会话创建成功")
     except Exception as e:
+        logger.error(f"[API] Failed to create session: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"创建会话失败: {str(e)}")
 
 
@@ -41,6 +47,7 @@ async def list_sessions(
     status: SessionStatus | None = Query(None, description="按状态筛选"),
     db_session: AsyncSession = Depends(get_async_session),
 ):
+    logger.info(f"[API] GET /api/v1/sessions - Listing sessions page={page} page_size={page_size} status={status}")
     from app.storage.models import SessionDB
     try:
         repo = SessionRepository(db_session)
@@ -70,6 +77,7 @@ async def list_sessions(
             total = result.scalar()
             
             sessions = await repo.list(page_size, offset)
+            logger.info(f"[API] Retrieved {len(sessions)} sessions (total={total})")
             return PaginatedResponse.create(
                 items=sessions,
                 total=total,
@@ -92,6 +100,7 @@ async def list_sessions(
             for s in db_sessions
         ]
         
+        logger.info(f"[API] Retrieved {len(sessions)} sessions (total={total})")
         return PaginatedResponse.create(
             items=sessions,
             total=total,
@@ -99,6 +108,7 @@ async def list_sessions(
             page_size=page_size,
         )
     except Exception as e:
+        logger.error(f"[API] Failed to list sessions: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"获取会话列表失败: {str(e)}")
 
 
@@ -107,15 +117,19 @@ async def get_session(
     session_id: str,
     db_session: AsyncSession = Depends(get_async_session),
 ):
+    logger.info(f"[API] GET /api/v1/sessions/{session_id} - Getting session")
     try:
         repo = SessionRepository(db_session)
         session = await repo.get(session_id)
         if not session:
+            logger.warning(f"[API] Session not found session_id={session_id}")
             raise HTTPException(status_code=404, detail="Session not found")
+        logger.info(f"[API] Session retrieved successfully session_id={session_id}")
         return ApiResponse.success_response(data=session)
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"[API] Failed to get session session_id={session_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"获取会话失败: {str(e)}")
 
 

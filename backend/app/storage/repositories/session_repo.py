@@ -7,6 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.session import Session, SessionStatus
 from app.storage.models import SessionDB
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class SessionRepository:
@@ -19,6 +22,8 @@ class SessionRepository:
         session_id = str(uuid.uuid4())
         now = datetime.now()
         
+        logger.debug(f"[DB] Creating session session_id={session_id} trigger_type={trigger_type} trigger_source={trigger_source}")
+        
         db_session = SessionDB(
             id=session_id,
             title=title or "新会话",
@@ -29,6 +34,8 @@ class SessionRepository:
         )
         self.session.add(db_session)
         await self.session.flush()
+        
+        logger.info(f"[DB] Session created successfully session_id={session_id}")
         
         return Session(
             id=session_id,
@@ -42,12 +49,16 @@ class SessionRepository:
         )
 
     async def get(self, session_id: str) -> Optional[Session]:
+        logger.debug(f"[DB] Getting session session_id={session_id}")
         result = await self.session.execute(
             select(SessionDB).where(SessionDB.id == session_id)
         )
         db_session = result.scalar_one_or_none()
         if not db_session:
+            logger.warning(f"[DB] Session not found session_id={session_id}")
             return None
+        
+        logger.debug(f"[DB] Session retrieved successfully session_id={session_id}")
         
         return Session(
             id=db_session.id,
@@ -87,16 +98,20 @@ class SessionRepository:
         ]
 
     async def update_status(self, session_id: str, status: SessionStatus) -> Optional[Session]:
+        logger.debug(f"[DB] Updating session status session_id={session_id} status={status.value}")
         result = await self.session.execute(
             select(SessionDB).where(SessionDB.id == session_id)
         )
         db_session = result.scalar_one_or_none()
         if not db_session:
+            logger.warning(f"[DB] Session not found for status update session_id={session_id}")
             return None
         
         db_session.status = status.value
         db_session.updated_at = datetime.now()
         await self.session.flush()
+        
+        logger.info(f"[DB] Session status updated session_id={session_id} status={status.value}")
         
         return await self.get(session_id)
 

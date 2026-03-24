@@ -7,6 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.evidence import Evidence, EvidenceType
 from app.storage.models import EvidenceDB
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class EvidenceRepository:
@@ -37,10 +40,12 @@ class EvidenceRepository:
         session_id: str,
         evidence_list: List[Evidence],
     ) -> List[EvidenceDB]:
+        logger.debug(f"[DB] Creating batch evidence session_id={session_id} count={len(evidence_list)}")
         db_evidence_list = []
         for evidence in evidence_list:
             db_evidence = await self.create(session_id, evidence)
             db_evidence_list.append(db_evidence)
+        logger.info(f"[DB] Batch evidence created successfully session_id={session_id} count={len(db_evidence_list)}")
         return db_evidence_list
 
     async def get(self, evidence_id: str) -> Optional[EvidenceDB]:

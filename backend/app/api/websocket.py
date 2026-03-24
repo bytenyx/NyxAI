@@ -10,6 +10,9 @@ from app.agents.base import AgentContext
 from app.agents.orchestrator import OrchestratorAgent
 from app.storage.repositories.session_repo import SessionRepository
 from app.storage.repositories.evidence_repo import EvidenceRepository
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(tags=["websocket"])
 
@@ -30,18 +33,20 @@ class ConnectionManager:
         self.active_connections[session_id] = websocket
         self._last_ping[session_id] = time.time()
         self._connection_start[session_id] = time.time()
+        logger.info(f"[WebSocket] Connection established session_id={session_id} total_connections={len(self.active_connections)}")
 
     def disconnect(self, session_id: str):
         if session_id in self.active_connections:
             try:
                 self.active_connections[session_id].close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[WebSocket] Error closing connection for session_id={session_id}: {e}")
             del self.active_connections[session_id]
         if session_id in self._last_ping:
             del self._last_ping[session_id]
         if session_id in self._connection_start:
             del self._connection_start[session_id]
+        logger.info(f"[WebSocket] Connection closed session_id={session_id} remaining_connections={len(self.active_connections)}")
 
     def _get_sequence(self) -> int:
         self._sequence += 1
@@ -64,8 +69,12 @@ class ConnectionManager:
             }
             try:
                 await self.active_connections[session_id].send_json(message)
+                logger.debug(f"[WebSocket] Event sent session_id={session_id} type={event_type} sequence={message['sequence']}")
             except Exception as e:
+                logger.error(f"[WebSocket] Failed to send event session_id={session_id} type={event_type}: {e}", exc_info=True)
                 await self.disconnect(session_id)
+        else:
+            logger.warning(f"[WebSocket] Cannot send event - no active connection session_id={session_id}")
 
     async def send_heartbeat(self):
         """发送心跳消息到所有活跃连接"""
@@ -81,15 +90,19 @@ class ConnectionManager:
                             "timestamp": current_time,
                         })
                     except Exception as e:
+                        logger.warning(f"[WebSocket] Heartbeat failed for session_id={session_id}: {e}")
                         to_remove.append(session_id)
                 
                 for session_id in to_remove:
                     await self.disconnect(session_id)
                 
+                logger.debug(f"[WebSocket] Heartbeat sent to {len(self.active_connections)} connections")
                 await asyncio.sleep(self._heartbeat_interval)
             except asyncio.CancelledError:
+                logger.info("[WebSocket] Heartbeat task cancelled")
                 break
             except Exception as e:
+                logger.error(f"[WebSocket] Heartbeat error: {e}", exc_info=True)
                 await asyncio.sleep(self._heartbeat_interval)
 
     async def check_timeouts(self):
@@ -102,7 +115,7 @@ class ConnectionManager:
                 for session_id, last_ping in self._last_ping.items():
                     time_since_ping = current_time - last_ping
                     if time_since_ping > self._connection_timeout:
-                        print(f"Connection timeout for {session_id}: {time_since_ping:.1f}s > {self._connection_timeout}s")
+                        logger.warning(f"[WebSocket] Connection timeout session_id={session_id} time_since_ping={time_since_ping:.1f}s timeout={self._connection_timeout}s")
                         to_remove.append(session_id)
                 
                 for session_id in to_remove:
@@ -110,9 +123,10 @@ class ConnectionManager:
                 
                 await asyncio.sleep(60)
             except asyncio.CancelledError:
+                logger.info("[WebSocket] Timeout check task cancelled")
                 break
             except Exception as e:
-                print(f"Error in timeout check: {e}")
+                logger.error(f"[WebSocket] Timeout check error: {e}", exc_info=True)
                 await asyncio.sleep(60)
 
     async def start_background_tasks(self):
@@ -162,46 +176,64 @@ manager = ConnectionManager()
 @router.websocket("/api/v1/ws/chat/{session_id}")
 async def websocket_chat(websocket: WebSocket, session_id: str):
     from app.storage.database import async_session_factory
-    from app.utils.logger import get_logger
+    from app.utils.logger import get_logger, add_request_context, clear_request_context
     
     logger = get_logger(__name__)
+    connection_start = time.time()
+    
+    add_request_context(session_id=session_id)
     
     await manager.connect(session_id, websocket)
     await manager.start_background_tasks()
     
     connection_info = manager.get_connection_info(session_id)
-    logger.info(f"WebSocket connected: {connection_info}")
+    logger.info(f"[WebSocket] Chat endpoint connected session_id={session_id} info={connection_info}")
     
     try:
         async with async_session_factory() as db_session:
+            message_count = 0
             while True:
                 data = await websocket.receive_json()
+                message_count += 1
+                message_type = data.get("type", "unknown")
+                
+                logger.debug(f"[WebSocket] Message received session_id={session_id} type={message_type} count={message_count}")
 
-                if data.get("type") == "chat":
+                if message_type == "chat":
                     content = data.get("content", "")
+                    logger.info(f"[WebSocket] Chat message session_id={session_id} content_length={len(content)}")
                     await handle_chat_message(session_id, content, db_session)
 
-                elif data.get("type") == "stop":
+                elif message_type == "stop":
+                    logger.info(f"[WebSocket] Stop command received session_id={session_id}")
                     await manager.send_event(
                         session_id,
                         "stopped",
                         {"message": "Processing stopped by user"}
                     )
 
-                elif data.get("type") == "ping":
+                elif message_type == "ping":
                     await manager.update_ping(session_id)
                     await websocket.send_json({"type": "pong", "timestamp": time.time()})
+                    logger.debug(f"[WebSocket] Pong sent session_id={session_id}")
 
-                elif data.get("type") == "pong":
+                elif message_type == "pong":
                     await manager.update_ping(session_id)
+                    logger.debug(f"[WebSocket] Pong received session_id={session_id}")
+                else:
+                    logger.warning(f"[WebSocket] Unknown message type session_id={session_id} type={message_type}")
 
     except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnected: {session_id}")
+        connection_duration = time.time() - connection_start
+        logger.info(f"[WebSocket] Disconnected session_id={session_id} duration={connection_duration:.1f}s messages_processed={message_count}")
     except Exception as e:
-        logger.error(f"WebSocket error for session {session_id}: {e}", exc_info=True)
+        connection_duration = time.time() - connection_start
+        logger.error(f"[WebSocket] Error session_id={session_id} duration={connection_duration:.1f}s messages_processed={message_count} error={e}", exc_info=True)
     finally:
         await manager.disconnect(session_id)
-        logger.info(f"WebSocket cleanup completed: {session_id}")
+        connection_duration = time.time() - connection_start
+        logger.info(f"[WebSocket] Cleanup completed session_id={session_id} total_duration={connection_duration:.1f}s total_messages={message_count}")
+        clear_request_context()
 
 
 async def handle_chat_message(session_id: str, content: str, db_session):

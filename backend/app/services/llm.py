@@ -1,13 +1,15 @@
 import json
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from app.config import get_settings
+from app.utils.logger import get_logger
 
 settings = get_settings()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -52,34 +54,60 @@ class LLMService:
         history: Optional[List[Dict[str, str]]] = None,
         expect_json: bool = False,
     ) -> LLMResponse:
+        request_id = f"llm_{int(time.time() * 1000)}"
+        start_time = time.time()
+        
         logger.info("=" * 60)
-        logger.info("[LLM Request] provider=%s model=%s", self.config.provider, self.config.model)
+        logger.info(f"[LLM Request] request_id={request_id}")
+        logger.info(f"[LLM Request] provider={self.config.provider} model={self.config.model}")
+        logger.info(f"[LLM Request] expect_json={expect_json}")
+        logger.debug(f"[LLM Request] prompt_length={len(prompt)} chars")
         if system_prompt:
-            logger.info("[LLM System Prompt]\n%s", system_prompt[:500] + "..." if len(system_prompt) > 500 else system_prompt)
-        logger.info("[LLM Prompt]\n%s", prompt[:1000] + "..." if len(prompt) > 1000 else prompt)
-        logger.info("[LLM Expect JSON] %s", expect_json)
+            logger.debug(f"[LLM Request] system_prompt_length={len(system_prompt)} chars")
+        if history:
+            logger.debug(f"[LLM Request] history_length={len(history)} messages")
         
-        if self.config.provider == "mock":
-            response = LLMResponse(
-                content=self._get_mock_response(prompt, expect_json),
-                usage={"prompt_tokens": 0, "completion_tokens": 1},
-                model=self.config.model,
-            )
-        elif self.config.provider == "openai":
-            response = await self._generate_openai(prompt, system_prompt, history)
-        else:
-            raise ValueError(f"Unsupported provider: {self.config.provider}")
+        if system_prompt:
+            logger.debug(f"[LLM System Prompt]\n{system_prompt[:500]}{'...' if len(system_prompt) > 500 else system_prompt}")
+        logger.debug(f"[LLM Prompt]\n{prompt[:1000]}{'...' if len(prompt) > 1000 else prompt}")
         
-        if expect_json:
-            response.parsed_json = self._parse_json_response(response.content)
-        
-        logger.info("[LLM Response] usage=%s", response.usage)
-        logger.info("[LLM Content]\n%s", response.content[:1000] + "..." if len(response.content) > 1000 else response.content)
-        if response.parsed_json:
-            logger.info("[LLM Parsed JSON]\n%s", json.dumps(response.parsed_json, ensure_ascii=False, indent=2)[:500])
-        logger.info("=" * 60)
-        
-        return response
+        try:
+            if self.config.provider == "mock":
+                logger.info(f"[LLM] Using mock provider")
+                response = LLMResponse(
+                    content=self._get_mock_response(prompt, expect_json),
+                    usage={"prompt_tokens": 0, "completion_tokens": 1},
+                    model=self.config.model,
+                )
+            elif self.config.provider == "openai":
+                logger.info(f"[LLM] Calling OpenAI API")
+                response = await self._generate_openai(prompt, system_prompt, history)
+            else:
+                error_msg = f"Unsupported provider: {self.config.provider}"
+                logger.error(f"[LLM Error] {error_msg}")
+                raise ValueError(error_msg)
+            
+            if expect_json:
+                parse_start = time.time()
+                response.parsed_json = self._parse_json_response(response.content)
+                parse_duration = time.time() - parse_start
+                logger.debug(f"[LLM] JSON parsing completed in {parse_duration:.3f}s")
+            
+            duration = time.time() - start_time
+            logger.info(f"[LLM Response] request_id={request_id} duration={duration:.2f}s")
+            logger.info(f"[LLM Response] usage={response.usage}")
+            logger.debug(f"[LLM Response] content_length={len(response.content)} chars")
+            logger.debug(f"[LLM Content]\n{response.content[:1000]}{'...' if len(response.content) > 1000 else response.content}")
+            if response.parsed_json:
+                logger.debug(f"[LLM Parsed JSON]\n{json.dumps(response.parsed_json, ensure_ascii=False, indent=2)[:500]}")
+            logger.info("=" * 60)
+            
+            return response
+        except Exception as e:
+            duration = time.time() - start_time
+            logger.error(f"[LLM Error] request_id={request_id} duration={duration:.2f}s error={e}", exc_info=True)
+            logger.error("=" * 60)
+            raise
 
     def _get_mock_response(self, prompt: str, expect_json: bool) -> str:
         if expect_json:
