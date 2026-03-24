@@ -14,25 +14,29 @@ class SessionRepository:
         self.session = session
 
     async def create(
-        self, trigger_type: str, trigger_source: str, status: SessionStatus = SessionStatus.INVESTIGATING
+        self, trigger_type: str, trigger_source: str, status: SessionStatus = SessionStatus.INVESTIGATING, title: Optional[str] = None
     ) -> Session:
         session_id = str(uuid.uuid4())
         now = datetime.now()
         
         db_session = SessionDB(
             id=session_id,
+            title=title or "新会话",
             trigger_type=trigger_type,
             trigger_source=trigger_source,
             status=status.value,
+            message_count=0,
         )
         self.session.add(db_session)
         await self.session.flush()
         
         return Session(
             id=session_id,
+            title=title or "新会话",
             trigger_type=trigger_type,
             trigger_source=trigger_source,
             status=status,
+            message_count=0,
             created_at=now,
             updated_at=now,
         )
@@ -47,9 +51,12 @@ class SessionRepository:
         
         return Session(
             id=db_session.id,
+            title=db_session.title,
             trigger_type=db_session.trigger_type,
             trigger_source=db_session.trigger_source,
             status=SessionStatus(db_session.status),
+            message_count=db_session.message_count or 0,
+            last_message=db_session.last_message,
             investigation=db_session.investigation,
             root_cause=db_session.root_cause,
             recovery_plan=db_session.recovery_plan,
@@ -67,9 +74,12 @@ class SessionRepository:
         return [
             Session(
                 id=s.id,
+                title=s.title,
                 trigger_type=s.trigger_type,
                 trigger_source=s.trigger_source,
                 status=SessionStatus(s.status),
+                message_count=s.message_count or 0,
+                last_message=s.last_message,
                 created_at=s.created_at,
                 updated_at=s.updated_at,
             )

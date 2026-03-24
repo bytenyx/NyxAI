@@ -14,6 +14,7 @@ router = APIRouter(prefix="/api/v1/sessions", tags=["sessions"])
 class CreateSessionRequest(BaseModel):
     trigger_type: str
     trigger_source: str
+    title: str | None = None
 
 
 @router.post("", response_model=Session)
@@ -22,7 +23,7 @@ async def create_session(
     db_session: AsyncSession = Depends(get_async_session),
 ):
     repo = SessionRepository(db_session)
-    return await repo.create(request.trigger_type, request.trigger_source)
+    return await repo.create(request.trigger_type, request.trigger_source, title=request.title)
 
 
 @router.get("", response_model=List[Session])

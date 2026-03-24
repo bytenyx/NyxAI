@@ -71,9 +71,12 @@ class RecoveryPlan(BaseModel):
 
 class Session(BaseModel):
     id: str
+    title: Optional[str] = None
     trigger_type: str = Field(..., description="Trigger type: webhook/scheduled/chat")
     trigger_source: str = Field(..., description="Trigger source")
     status: SessionStatus
+    message_count: int = 0
+    last_message: Optional[str] = None
     investigation: Optional[Dict[str, Any]] = None
     root_cause: Optional[Dict[str, Any]] = None
     recovery_plan: Optional[Dict[str, Any]] = None

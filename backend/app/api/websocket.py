@@ -7,6 +7,8 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.agents.base import AgentContext
 from app.agents.orchestrator import OrchestratorAgent
+from app.storage.repositories.session_repo import SessionRepository
+from app.storage.repositories.evidence_repo import EvidenceRepository
 
 router = APIRouter(tags=["websocket"])
 
@@ -51,27 +53,36 @@ manager = ConnectionManager()
 
 @router.websocket("/api/v1/ws/chat/{session_id}")
 async def websocket_chat(websocket: WebSocket, session_id: str):
+    from app.storage.database import async_session_factory
+    
     await manager.connect(session_id, websocket)
     try:
-        while True:
-            data = await websocket.receive_json()
+        async with async_session_factory() as db_session:
+            while True:
+                data = await websocket.receive_json()
 
-            if data.get("type") == "chat":
-                content = data.get("content", "")
-                await handle_chat_message(session_id, content)
+                if data.get("type") == "chat":
+                    content = data.get("content", "")
+                    await handle_chat_message(session_id, content, db_session)
 
-            elif data.get("type") == "stop":
-                pass
+                elif data.get("type") == "stop":
+                    pass
 
-            elif data.get("type") == "ping":
-                await websocket.send_json({"type": "pong"})
+                elif data.get("type") == "ping":
+                    await websocket.send_json({"type": "pong"})
 
     except WebSocketDisconnect:
         manager.disconnect(session_id)
 
 
-async def handle_chat_message(session_id: str, content: str):
-    orchestrator = OrchestratorAgent()
+async def handle_chat_message(session_id: str, content: str, db_session):
+    session_repo = SessionRepository(db_session)
+    evidence_repo = EvidenceRepository(db_session)
+    
+    orchestrator = OrchestratorAgent(
+        session_repo=session_repo,
+        evidence_repo=evidence_repo,
+    )
 
     async for event in orchestrator.run_stream(session_id, content):
         await manager.send_event(

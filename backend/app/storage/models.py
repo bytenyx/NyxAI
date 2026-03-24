@@ -11,9 +11,12 @@ class SessionDB(Base):
     __tablename__ = "sessions"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    title: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     trigger_type: Mapped[str] = mapped_column(String(50))
     trigger_source: Mapped[str] = mapped_column(String(100))
     status: Mapped[str] = mapped_column(String(20), index=True)
+    message_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     investigation: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     root_cause: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     recovery_plan: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)

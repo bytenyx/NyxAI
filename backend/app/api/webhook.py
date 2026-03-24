@@ -116,6 +116,7 @@ async def receive_alert(
         trigger_type="webhook",
         trigger_source=f"prometheus:{alert.labels.alertname}",
         status=SessionStatus.INVESTIGATING,
+        title=f"Alert: {alert.labels.alertname}",
     )
     
     background_tasks.add_task(
@@ -149,6 +150,7 @@ async def receive_custom_webhook(
         trigger_type="webhook",
         trigger_source=f"custom:{event_source}:{event_type}",
         status=SessionStatus.INVESTIGATING,
+        title=f"Webhook: {event_type}",
     )
     
     query = request.get("message") or request.get("description") or str(request)

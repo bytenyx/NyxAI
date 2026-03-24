@@ -1,8 +1,11 @@
 export interface Session {
   id: string
+  title?: string
   trigger_type: string
   trigger_source: string
   status: 'investigating' | 'diagnosing' | 'recovering' | 'completed' | 'failed'
+  message_count: number
+  last_message?: string
   created_at: string
   updated_at: string
 }

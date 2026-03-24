@@ -27,7 +27,7 @@ const SessionSidebar: React.FC = () => {
   const loadSessions = async () => {
     try {
       const response = await sessionsApi.list()
-      setSessions(response.data)
+      setSessions(response)
     } catch (error) {
       console.error('Failed to load sessions:', error)
     }
@@ -38,8 +38,9 @@ const SessionSidebar: React.FC = () => {
       const response = await sessionsApi.create({
         trigger_type: 'manual',
         trigger_source: 'user',
+        title: '新会话',
       })
-      setCurrentSession(response.data)
+      setCurrentSession(response)
       loadSessions()
     } catch (error) {
       console.error('Failed to create session:', error)

@@ -56,6 +56,7 @@ async def chat_message(
             trigger_type="chat",
             trigger_source="user-input",
             status=SessionStatus.INVESTIGATING,
+            title=f"Chat: {request.message[:50]}",
         )
         session_id = session.id
     else:
@@ -66,6 +67,7 @@ async def chat_message(
                 trigger_type="chat",
                 trigger_source="user-input",
                 status=SessionStatus.INVESTIGATING,
+                title=f"Chat: {request.message[:50]}",
             )
             session_id = session.id
     
@@ -144,6 +146,7 @@ async def chat_stream(
             trigger_type="chat",
             trigger_source="user-input",
             status=SessionStatus.INVESTIGATING,
+            title=f"Chat: {request.message[:50]}",
         )
         session_id = session.id
     else:
@@ -154,6 +157,7 @@ async def chat_stream(
                 trigger_type="chat",
                 trigger_source="user-input",
                 status=SessionStatus.INVESTIGATING,
+                title=f"Chat: {request.message[:50]}",
             )
             session_id = session.id
     
