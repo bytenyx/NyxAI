@@ -190,13 +190,6 @@ export class ChatWebSocket {
     }
   }
 
-  sendPing() {
-    const message = JSON.stringify({ type: 'ping' })
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(message)
-    }
-  }
-
   isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN
   }
