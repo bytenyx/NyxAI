@@ -36,7 +36,7 @@ const SessionSidebar: React.FC = () => {
       const response = await sessionsApi.list(pageNum, 20)
       
       if (append) {
-        setSessions([...sessions, ...response.items])
+        setSessions(prev => [...prev, ...response.items])
       } else {
         setSessions(response.items)
       }
