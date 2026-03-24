@@ -1,10 +1,14 @@
 from datetime import datetime
 from typing import Any, Dict, List
 import uuid
+import time
 
 from app.agents.base import AgentContext, AgentResult, BaseAgent
 from app.models.evidence import Evidence, EvidenceType
 from app.services.llm import LLMService
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class InvestigationAgent(BaseAgent):

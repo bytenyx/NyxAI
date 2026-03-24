@@ -85,6 +85,16 @@ const SessionSidebar: React.FC = () => {
     }
   }
 
+  const handleSelectSession = async (session: SessionListItem) => {
+    try {
+      const fullSession = await sessionsApi.get(session.id)
+      setCurrentSession(fullSession)
+    } catch (error) {
+      console.error('Failed to load session details:', error)
+      message.error('加载会话详情失败')
+    }
+  }
+
   const filteredSessions = searchQuery
     ? sessions.filter((s) => s.title?.toLowerCase().includes(searchQuery.toLowerCase()))
     : sessions
@@ -104,7 +114,7 @@ const SessionSidebar: React.FC = () => {
       <SessionList
         sessions={filteredSessions}
         currentSessionId={currentSession?.id || null}
-        onSelect={(s) => setCurrentSession(s as unknown as typeof currentSession)}
+        onSelect={handleSelectSession}
         onDelete={handleDeleteSession}
       />
 

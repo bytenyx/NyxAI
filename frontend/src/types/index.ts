@@ -6,6 +6,10 @@ export interface Session {
   status: 'investigating' | 'diagnosing' | 'recovering' | 'completed' | 'failed'
   message_count: number
   last_message?: string
+  investigation?: Record<string, unknown>
+  root_cause?: Record<string, unknown>
+  recovery_plan?: Record<string, unknown>
+  execution_results?: Record<string, unknown>[]
   created_at: string
   updated_at: string
 }

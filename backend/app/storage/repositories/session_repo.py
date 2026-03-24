@@ -192,3 +192,16 @@ class SessionRepository:
         await self.session.flush()
         
         return await self.get(session_id)
+
+    async def delete(self, session_id: str) -> bool:
+        result = await self.session.execute(
+            select(SessionDB).where(SessionDB.id == session_id)
+        )
+        db_session = result.scalar_one_or_none()
+        if not db_session:
+            return False
+        
+        await self.session.delete(db_session)
+        await self.session.flush()
+        
+        return True

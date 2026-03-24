@@ -12,6 +12,7 @@ interface AgentState {
   handleMessage: (message: ServerMessage) => void
   setConnected: (connected: boolean) => void
   reset: () => void
+  loadFromHistory: (executions: AgentExecution[]) => void
 }
 
 export const useAgentStore = create<AgentState>((set, get) => ({
@@ -32,7 +33,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       case 'orchestrator_status':
         newTimeline = [
           {
-            id: 'orchestrator',
+            id: `orchestrator-${sequence}`,
             type: 'alert',
             status: 'running',
             title: '编排器启动',
@@ -55,7 +56,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           newAgents[message.agent.id] = exec
 
           newTimeline.push({
-            id: message.agent.id,
+            id: `${message.agent.id}-${sequence}`,
             type: message.agent.type as TimelineNode['type'],
             status: 'running',
             title: message.agent.display_name,
@@ -114,7 +115,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             completed_at: message.timestamp,
           }
 
-          const timelineIdx = newTimeline.findIndex((n) => n.id === message.agent!.id)
+          const timelineIdx = newTimeline.findIndex((n) => n.id.startsWith(`${message.agent!.id}-`))
           if (timelineIdx >= 0) {
             newTimeline[timelineIdx] = {
               ...newTimeline[timelineIdx],
@@ -140,7 +141,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
       case 'session_complete':
         newTimeline.push({
-          id: 'complete',
+          id: `complete-${sequence}`,
           type: 'complete',
           status: 'completed',
           title: '会话完成',
@@ -161,4 +162,32 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       timeline: [],
       sequence: 0,
     }),
+
+  loadFromHistory: (executions) => {
+    const newAgents: Record<string, AgentExecution> = {}
+    const newTimeline: TimelineNode[] = []
+    let sequence = 0
+
+    executions.forEach((exec) => {
+      newAgents[exec.id] = exec
+
+      newTimeline.push({
+        id: `${exec.id}-${sequence}`,
+        type: exec.agent.type as TimelineNode['type'],
+        status: exec.status as TimelineNode['status'],
+        title: exec.agent.display_name,
+        description: exec.result,
+        timestamp: exec.started_at,
+        agent: exec.agent,
+      })
+
+      sequence++
+    })
+
+    set({
+      agents: newAgents,
+      timeline: newTimeline,
+      sequence,
+    })
+  },
 }))

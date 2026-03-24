@@ -23,7 +23,7 @@ class ConnectionManager:
         self._heartbeat_task: Optional[asyncio.Task] = None
         self._timeout_check_task: Optional[asyncio.Task] = None
         self._heartbeat_interval = 30
-        self._connection_timeout = 300
+        self._connection_timeout = 120
 
     async def connect(self, session_id: str, websocket: WebSocket):
         await websocket.accept()
@@ -100,7 +100,9 @@ class ConnectionManager:
                 to_remove = []
                 
                 for session_id, last_ping in self._last_ping.items():
-                    if current_time - last_ping > self._connection_timeout:
+                    time_since_ping = current_time - last_ping
+                    if time_since_ping > self._connection_timeout:
+                        print(f"Connection timeout for {session_id}: {time_since_ping:.1f}s > {self._connection_timeout}s")
                         to_remove.append(session_id)
                 
                 for session_id in to_remove:
@@ -110,6 +112,7 @@ class ConnectionManager:
             except asyncio.CancelledError:
                 break
             except Exception as e:
+                print(f"Error in timeout check: {e}")
                 await asyncio.sleep(60)
 
     async def start_background_tasks(self):

@@ -44,11 +44,6 @@ async def list_knowledge(
     if type:
         query = query.where(KnowledgeDB.knowledge_type == type)
 
-    if tags:
-        tag_list = [t.strip() for t in tags.split(",")]
-        for tag in tag_list:
-            query = query.where(KnowledgeDB.tags.contains([tag]))
-
     if search:
         query = query.where(KnowledgeDB.title.ilike(f"%{search}%"))
 
@@ -57,6 +52,13 @@ async def list_knowledge(
 
     result = await db_session.execute(query)
     knowledge_list = result.scalars().all()
+
+    if tags:
+        tag_list = [t.strip() for t in tags.split(",")]
+        knowledge_list = [
+            k for k in knowledge_list
+            if k.tags and any(tag in k.tags for tag in tag_list)
+        ]
 
     return [_to_response(k) for k in knowledge_list]
 

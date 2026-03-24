@@ -7,8 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas import ApiResponse, PaginatedResponse
 from app.models.session import Session, SessionStatus
+from app.models.agent import AgentExecution
 from app.storage.database import get_async_session
 from app.storage.repositories.session_repo import SessionRepository
+from app.storage.repositories.agent_exec_repo import AgentExecutionRepository
 
 router = APIRouter(prefix="/api/v1/sessions", tags=["sessions"])
 
@@ -39,13 +41,13 @@ async def list_sessions(
     status: SessionStatus | None = Query(None, description="按状态筛选"),
     db_session: AsyncSession = Depends(get_async_session),
 ):
+    from app.storage.models import SessionDB
     try:
         repo = SessionRepository(db_session)
         
         offset = (page - 1) * page_size
         
         if status:
-            from app.storage.models import SessionDB
             result = await db_session.execute(
                 select(func.count())
                 .select_from(SessionDB)
@@ -115,3 +117,33 @@ async def get_session(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取会话失败: {str(e)}")
+
+
+@router.get("/{session_id}/executions", response_model=ApiResponse[list[AgentExecution]])
+async def get_session_executions(
+    session_id: str,
+    db_session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        agent_exec_repo = AgentExecutionRepository(db_session)
+        executions = await agent_exec_repo.get_by_session(session_id)
+        return ApiResponse.success_response(data=executions, message="获取执行记录成功")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取执行记录失败: {str(e)}")
+
+
+@router.delete("/{session_id}", response_model=ApiResponse[None])
+async def delete_session(
+    session_id: str,
+    db_session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        repo = SessionRepository(db_session)
+        success = await repo.delete(session_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return ApiResponse.success_response(data=None, message="会话删除成功")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"删除会话失败: {str(e)}")

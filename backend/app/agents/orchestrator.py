@@ -1,5 +1,6 @@
 from typing import Any, AsyncGenerator, Dict, Optional
 import uuid
+import time
 
 from app.agents.base import AgentContext, AgentResult, BaseAgent
 from app.agents.investigation import InvestigationAgent
@@ -8,6 +9,9 @@ from app.agents.recovery import RecoveryAgent
 from app.models.session import SessionStatus
 from app.storage.repositories.session_repo import SessionRepository
 from app.storage.repositories.evidence_repo import EvidenceRepository
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class OrchestratorAgent(BaseAgent):
@@ -29,15 +33,27 @@ class OrchestratorAgent(BaseAgent):
     async def execute(self, context: AgentContext) -> AgentResult:
         all_evidence = []
         session_id = context.session_id
+        start_time = time.time()
         
+        logger.info("=" * 80)
+        logger.info(f"[Orchestrator] Starting execution for session_id={session_id}")
+        logger.info(f"[Orchestrator] Query: {context.query[:200]}{'...' if len(context.query) > 200 else ''}")
+        
+        inv_start = time.time()
+        logger.info(f"[Orchestrator] Starting InvestigationAgent")
         inv_result = await self.investigation.execute(context)
+        inv_duration = time.time() - inv_start
+        
         if not inv_result.success:
+            logger.error(f"[Orchestrator] Investigation failed for session_id={session_id} after {inv_duration:.2f}s")
             await self._update_status(session_id, SessionStatus.FAILED)
             return AgentResult(
                 success=False,
                 error="Investigation failed",
                 data={"status": "failed", "stage": "investigation"},
             )
+        
+        logger.info(f"[Orchestrator] Investigation completed in {inv_duration:.2f}s, found {len(inv_result.evidence)} evidence items")
         all_evidence.extend(inv_result.evidence)
         
         await self._persist_evidence(session_id, inv_result.evidence)
@@ -48,6 +64,8 @@ class OrchestratorAgent(BaseAgent):
             investigation=inv_result.data,
         )
         
+        diag_start = time.time()
+        logger.info(f"[Orchestrator] Starting DiagnosisAgent")
         diagnosis_context = AgentContext(
             session_id=context.session_id,
             query=context.query,
@@ -58,13 +76,18 @@ class OrchestratorAgent(BaseAgent):
             },
         )
         diag_result = await self.diagnosis.execute(diagnosis_context)
+        diag_duration = time.time() - diag_start
+        
         if not diag_result.success:
+            logger.error(f"[Orchestrator] Diagnosis failed for session_id={session_id} after {diag_duration:.2f}s")
             await self._update_status(session_id, SessionStatus.FAILED)
             return AgentResult(
                 success=False,
                 error="Diagnosis failed",
                 data={"status": "failed", "stage": "diagnosis"},
             )
+        
+        logger.info(f"[Orchestrator] Diagnosis completed in {diag_duration:.2f}s, found {len(diag_result.evidence)} evidence items")
         all_evidence.extend(diag_result.evidence)
         
         await self._persist_evidence(session_id, diag_result.evidence)
@@ -75,6 +98,8 @@ class OrchestratorAgent(BaseAgent):
             root_cause=diag_result.data,
         )
         
+        rec_start = time.time()
+        logger.info(f"[Orchestrator] Starting RecoveryAgent")
         recovery_context = AgentContext(
             session_id=context.session_id,
             query=context.query,
@@ -85,6 +110,9 @@ class OrchestratorAgent(BaseAgent):
             },
         )
         rec_result = await self.recovery.execute(recovery_context)
+        rec_duration = time.time() - rec_start
+        
+        logger.info(f"[Orchestrator] Recovery completed in {rec_duration:.2f}s, found {len(rec_result.evidence)} evidence items")
         all_evidence.extend(rec_result.evidence)
         
         await self._persist_evidence(session_id, rec_result.evidence)
@@ -94,6 +122,12 @@ class OrchestratorAgent(BaseAgent):
             status=SessionStatus.COMPLETED,
             recovery_plan=rec_result.data,
         )
+        
+        total_duration = time.time() - start_time
+        logger.info(f"[Orchestrator] Execution completed successfully for session_id={session_id}")
+        logger.info(f"[Orchestrator] Total duration: {total_duration:.2f}s")
+        logger.info(f"[Orchestrator] Total evidence collected: {len(all_evidence)}")
+        logger.info("=" * 80)
         
         return AgentResult(
             success=True,

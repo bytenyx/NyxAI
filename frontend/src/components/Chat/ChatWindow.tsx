@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react'
-import { Input, Button } from 'antd'
+import { Input, Button, message } from 'antd'
 import { SendOutlined } from '@ant-design/icons'
 import { useSessionStore } from '../../stores/sessionStore'
 import { useAgentStore } from '../../stores/agentStore'
 import { getWebSocket } from '../../services/websocket'
+import { sessionsApi } from '../../services/api'
 import AgentProcessPanel from '../Agent/AgentProcessPanel'
 import VerticalTimeline from '../Timeline/VerticalTimeline'
 
 const ChatWindow: React.FC = () => {
   const { currentSession } = useSessionStore()
-  const { isConnected, handleMessage, setConnected, reset } = useAgentStore()
+  const { isConnected, handleMessage, setConnected, reset, loadFromHistory } = useAgentStore()
   const [input, setInput] = useState('')
   const ws = getWebSocket()
 
@@ -20,17 +21,33 @@ const ChatWindow: React.FC = () => {
         setConnected(true)
       })
 
-      ws.on('*', (message) => {
+      const messageHandler = (message: any) => {
         handleMessage(message)
-      })
+      }
 
-      ws.onConnection((connected) => {
+      const connectionHandler = (connected: boolean) => {
         setConnected(connected)
-      })
-    }
+      }
 
-    return () => {
-      ws.disconnect()
+      ws.on('*', messageHandler)
+      ws.onConnection(connectionHandler)
+
+      sessionsApi.getExecutions(currentSession.id)
+        .then((executions) => {
+          if (executions && executions.length > 0) {
+            loadFromHistory(executions)
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to load session history:', error)
+          message.error('加载历史会话失败')
+        })
+
+      return () => {
+        ws.off('*', messageHandler)
+        ws.offConnection(connectionHandler)
+        ws.disconnect()
+      }
     }
   }, [currentSession?.id])
 

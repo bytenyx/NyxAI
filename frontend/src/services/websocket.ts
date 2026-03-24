@@ -15,7 +15,7 @@ export class ChatWebSocket {
   private heartbeatInterval: number | null = null
   private heartbeatTimeout: number | null = null
   private heartbeatIntervalMs = 30000
-  private heartbeatTimeoutMs = 10000
+  private heartbeatTimeoutMs = 60000
 
   constructor(baseUrl: string) {
     this.url = baseUrl.replace('http', 'ws')
@@ -45,11 +45,13 @@ export class ChatWebSocket {
           const message: ServerMessage = JSON.parse(event.data)
           
           if (message.type === 'ping') {
+            console.log('Received ping from server')
             this.sendPong()
             return
           }
           
           if (message.type === 'pong') {
+            console.log('Received pong from server')
             this.resetHeartbeatTimeout()
             return
           }
@@ -99,6 +101,7 @@ export class ChatWebSocket {
     const message = JSON.stringify({ type: 'ping', timestamp: Date.now() })
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(message)
+      console.log('Sent ping')
     }
   }
 
@@ -106,6 +109,7 @@ export class ChatWebSocket {
     const message = JSON.stringify({ type: 'pong', timestamp: Date.now() })
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(message)
+      console.log('Sent pong')
     }
   }
 
@@ -115,6 +119,7 @@ export class ChatWebSocket {
     }
     this.heartbeatTimeout = window.setTimeout(() => {
       console.warn('Heartbeat timeout, closing connection')
+      console.warn(`Last heartbeat was ${this.heartbeatTimeoutMs}ms ago`)
       this.ws?.close()
     }, this.heartbeatTimeoutMs)
   }

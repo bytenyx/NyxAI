@@ -30,6 +30,15 @@ class Settings(BaseSettings):
     CORS_ALLOW_CREDENTIALS: bool = True
     CORS_ALLOW_METHODS: str = "*"
     CORS_ALLOW_HEADERS: str = "*"
+    
+    LOG_DIR: str = "./logs"
+    LOG_LEVEL: str = "INFO"
+    LOG_FILE_MAX_BYTES: int = 10 * 1024 * 1024
+    LOG_FILE_BACKUP_COUNT: int = 5
+    LOG_FORMAT: str = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+    LOG_DATE_FORMAT: str = "%Y-%m-%d %H:%M:%S"
+    LOG_TO_FILE: bool = True
+    LOG_TO_CONSOLE: bool = True
 
     @property
     def cors_origins_list(self) -> List[str]:
