@@ -34,7 +34,7 @@ class ConnectionManager:
     def disconnect(self, session_id: str):
         if session_id in self.active_connections:
             try:
-                asyncio.create_task(self.active_connections[session_id].close())
+                self.active_connections[session_id].close()
             except Exception:
                 pass
             del self.active_connections[session_id]
