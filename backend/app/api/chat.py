@@ -1,12 +1,13 @@
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.base import AgentContext
 from app.agents.orchestrator import OrchestratorAgent
+from app.api.schemas import ApiResponse
 from app.models.session import SessionStatus
 from app.storage.database import get_async_session
 from app.storage.repositories.session_repo import SessionRepository
@@ -34,7 +35,7 @@ class ActionInfo(BaseModel):
     target: Optional[str] = None
 
 
-class ChatResponse(BaseModel):
+class ChatResponseData(BaseModel):
     session_id: str
     response: str
     status: str
@@ -43,26 +44,16 @@ class ChatResponse(BaseModel):
     recovery: Optional[Dict[str, Any]] = None
 
 
-@router.post("/message", response_model=ChatResponse)
+@router.post("/message", response_model=ApiResponse[ChatResponseData])
 async def chat_message(
     request: ChatRequest,
     db_session: AsyncSession = Depends(get_async_session),
 ):
-    session_repo = SessionRepository(db_session)
-    evidence_repo = EvidenceRepository(db_session)
-    
-    if not request.session_id:
-        session = await session_repo.create(
-            trigger_type="chat",
-            trigger_source="user-input",
-            status=SessionStatus.INVESTIGATING,
-            title=f"Chat: {request.message[:50]}",
-        )
-        session_id = session.id
-    else:
-        session_id = request.session_id
-        session = await session_repo.get(session_id)
-        if not session:
+    try:
+        session_repo = SessionRepository(db_session)
+        evidence_repo = EvidenceRepository(db_session)
+        
+        if not request.session_id:
             session = await session_repo.create(
                 trigger_type="chat",
                 trigger_source="user-input",
@@ -70,67 +61,90 @@ async def chat_message(
                 title=f"Chat: {request.message[:50]}",
             )
             session_id = session.id
-    
-    orchestrator = OrchestratorAgent(
-        session_repo=session_repo,
-        evidence_repo=evidence_repo,
-    )
-    context = AgentContext(
-        session_id=session_id,
-        query=request.message,
-    )
-    
-    result = await orchestrator.execute(context)
-    
-    if result.success:
-        investigation = result.data.get("investigation", {})
-        diagnosis = result.data.get("diagnosis", {})
-        recovery = result.data.get("recovery", {})
+        else:
+            session_id = request.session_id
+            session = await session_repo.get(session_id)
+            if not session:
+                session = await session_repo.create(
+                    trigger_type="chat",
+                    trigger_source="user-input",
+                    status=SessionStatus.INVESTIGATING,
+                    title=f"Chat: {request.message[:50]}",
+                )
+                session_id = session.id
         
-        response_parts = []
+        orchestrator = OrchestratorAgent(
+            session_repo=session_repo,
+            evidence_repo=evidence_repo,
+        )
+        context = AgentContext(
+            session_id=session_id,
+            query=request.message,
+        )
         
-        if investigation.get("summary"):
-            response_parts.append(f"【调查摘要】\n{investigation['summary']}")
+        result = await orchestrator.execute(context)
         
-        anomalies = investigation.get("anomalies", [])
-        if anomalies:
-            anomaly_text = "\n".join([
-                f"  - {a.get('name', '未知')}: {a.get('description', '')} (严重性: {a.get('severity', 'unknown')})"
-                for a in anomalies
-            ])
-            response_parts.append(f"【发现异常】\n{anomaly_text}")
-        
-        if diagnosis.get("root_cause"):
-            response_parts.append(f"【根因分析】\n{diagnosis['root_cause']}")
-            if diagnosis.get("confidence"):
-                response_parts.append(f"置信度: {diagnosis['confidence']:.0%}")
-        
-        actions = recovery.get("actions", [])
-        if actions:
-            action_text = "\n".join([
-                f"  {i+1}. {a.get('description', '')} (风险: {a.get('risk_level', 'unknown')}, 目标: {a.get('target', 'unknown')})"
-                for i, a in enumerate(actions)
-            ])
-            response_parts.append(f"【建议操作】\n{action_text}")
-        
-        if recovery.get("rollback_plan"):
-            response_parts.append(f"【回滚方案】\n{recovery['rollback_plan']}")
-        
-        response_text = "\n\n".join(response_parts) if response_parts else "分析完成"
-    else:
-        response_text = f"处理失败: {result.error}"
-        investigation = None
-        diagnosis = None
-        recovery = None
-    
-    return ChatResponse(
-        session_id=session_id,
-        response=response_text,
-        status=result.data.get("status", "unknown") if result.success else "failed",
-        investigation=investigation if result.success else None,
-        diagnosis=diagnosis if result.success else None,
-        recovery=recovery if result.success else None,
-    )
+        if result.success:
+            investigation = result.data.get("investigation", {})
+            diagnosis = result.data.get("diagnosis", {})
+            recovery = result.data.get("recovery", {})
+            
+            response_parts = []
+            
+            if investigation.get("summary"):
+                response_parts.append(f"【调查摘要】\n{investigation['summary']}")
+            
+            anomalies = investigation.get("anomalies", [])
+            if anomalies:
+                anomaly_text = "\n".join([
+                    f"  - {a.get('name', '未知')}: {a.get('description', '')} (严重性: {a.get('severity', 'unknown')})"
+                    for a in anomalies
+                ])
+                response_parts.append(f"【发现异常】\n{anomaly_text}")
+            
+            if diagnosis.get("root_cause"):
+                response_parts.append(f"【根因分析】\n{diagnosis['root_cause']}")
+                if diagnosis.get("confidence"):
+                    response_parts.append(f"置信度: {diagnosis['confidence']:.0%}")
+            
+            actions = recovery.get("actions", [])
+            if actions:
+                action_text = "\n".join([
+                    f"  {i+1}. {a.get('description', '')} (风险: {a.get('risk_level', 'unknown')}, 目标: {a.get('target', 'unknown')})"
+                    for i, a in enumerate(actions)
+                ])
+                response_parts.append(f"【建议操作】\n{action_text}")
+            
+            if recovery.get("rollback_plan"):
+                response_parts.append(f"【回滚方案】\n{recovery['rollback_plan']}")
+            
+            response_text = "\n\n".join(response_parts) if response_parts else "分析完成"
+            
+            return ApiResponse.success_response(
+                data=ChatResponseData(
+                    session_id=session_id,
+                    response=response_text,
+                    status=result.data.get("status", "unknown"),
+                    investigation=investigation,
+                    diagnosis=diagnosis,
+                    recovery=recovery,
+                ),
+                message="分析完成"
+            )
+        else:
+            return ApiResponse.error_response(
+                error=result.error or "处理失败",
+                data=ChatResponseData(
+                    session_id=session_id,
+                    response=f"处理失败: {result.error}",
+                    status="failed",
+                    investigation=None,
+                    diagnosis=None,
+                    recovery=None,
+                )
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @router.post("/stream")
