@@ -31,6 +31,24 @@ export interface ChatResponse {
   session_id: string
   response: string
   status: string
+  investigation?: Record<string, unknown>
+  diagnosis?: Record<string, unknown>
+  recovery?: Record<string, unknown>
+}
+
+export interface ApiResponse<T> {
+  success: boolean
+  data?: T
+  error?: string
+  message?: string
+}
+
+export interface PaginatedResponse<T> {
+  items: T[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
 }
 
 export interface Evidence {

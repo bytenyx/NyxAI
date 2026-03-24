@@ -12,6 +12,10 @@ export class ChatWebSocket {
   private maxReconnectAttempts = 3
   private reconnectDelay = 1000
   private messageQueue: string[] = []
+  private heartbeatInterval: number | null = null
+  private heartbeatTimeout: number | null = null
+  private heartbeatIntervalMs = 30000
+  private heartbeatTimeoutMs = 10000
 
   constructor(baseUrl: string) {
     this.url = baseUrl.replace('http', 'ws')
@@ -25,6 +29,7 @@ export class ChatWebSocket {
       this.ws.onopen = () => {
         console.log('WebSocket connected')
         this.reconnectAttempts = 0
+        this.startHeartbeat()
         this.notifyConnectionHandlers(true)
 
         this.messageQueue.forEach((msg) => {
@@ -38,6 +43,17 @@ export class ChatWebSocket {
       this.ws.onmessage = (event) => {
         try {
           const message: ServerMessage = JSON.parse(event.data)
+          
+          if (message.type === 'ping') {
+            this.sendPong()
+            return
+          }
+          
+          if (message.type === 'pong') {
+            this.resetHeartbeatTimeout()
+            return
+          }
+          
           this.emit(message.type, message)
           this.emit('*', message)
         } catch (e) {
@@ -47,15 +63,60 @@ export class ChatWebSocket {
 
       this.ws.onclose = () => {
         console.log('WebSocket disconnected')
+        this.stopHeartbeat()
         this.notifyConnectionHandlers(false)
         this.attemptReconnect(sessionId)
       }
 
       this.ws.onerror = (error) => {
         console.error('WebSocket error:', error)
+        this.stopHeartbeat()
         reject(error)
       }
     })
+  }
+
+  private startHeartbeat() {
+    this.stopHeartbeat()
+    this.heartbeatInterval = window.setInterval(() => {
+      this.sendPing()
+    }, this.heartbeatIntervalMs)
+    this.resetHeartbeatTimeout()
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval)
+      this.heartbeatInterval = null
+    }
+    if (this.heartbeatTimeout) {
+      clearTimeout(this.heartbeatTimeout)
+      this.heartbeatTimeout = null
+    }
+  }
+
+  private sendPing() {
+    const message = JSON.stringify({ type: 'ping', timestamp: Date.now() })
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(message)
+    }
+  }
+
+  private sendPong() {
+    const message = JSON.stringify({ type: 'pong', timestamp: Date.now() })
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(message)
+    }
+  }
+
+  private resetHeartbeatTimeout() {
+    if (this.heartbeatTimeout) {
+      clearTimeout(this.heartbeatTimeout)
+    }
+    this.heartbeatTimeout = window.setTimeout(() => {
+      console.warn('Heartbeat timeout, closing connection')
+      this.ws?.close()
+    }, this.heartbeatTimeoutMs)
   }
 
   private attemptReconnect(sessionId: string) {
@@ -68,10 +129,14 @@ export class ChatWebSocket {
       setTimeout(() => {
         this.connect(sessionId)
       }, delay)
+    } else {
+      console.error('Max reconnection attempts reached')
+      this.notifyConnectionHandlers(false)
     }
   }
 
   disconnect() {
+    this.stopHeartbeat()
     if (this.ws) {
       this.ws.close()
       this.ws = null

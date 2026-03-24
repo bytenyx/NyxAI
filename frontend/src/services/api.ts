@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Session, SessionListItem, ChatRequest, ChatResponse } from '../types'
+import type { Session, SessionListItem, ChatRequest, ChatResponse, ApiResponse, PaginatedResponse } from '../types'
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -9,13 +9,18 @@ const api = axios.create({
 export default api
 
 export const sessionsApi = {
-  list: () => api.get<SessionListItem[]>('/sessions').then(res => res.data),
-  get: (id: string) => api.get<Session>(`/sessions/${id}`).then(res => res.data),
+  list: (page = 1, pageSize = 20, status?: string) =>
+    api.get<PaginatedResponse<SessionListItem>>('/sessions', {
+      params: { page, page_size: pageSize, status }
+    }).then(res => res.data.data),
+  get: (id: string) =>
+    api.get<ApiResponse<Session>>(`/sessions/${id}`).then(res => res.data.data),
   create: (data: { trigger_type: string; trigger_source: string; title?: string }) =>
-    api.post<Session>('/sessions', data).then(res => res.data),
+    api.post<ApiResponse<Session>>('/sessions', data).then(res => res.data.data),
   delete: (id: string) => api.delete(`/sessions/${id}`).then(res => res.data),
 }
 
 export const chatApi = {
-  message: (data: ChatRequest) => api.post<ChatResponse>('/chat/message', data).then(res => res.data),
+  message: (data: ChatRequest) =>
+    api.post<ApiResponse<ChatResponse>>('/chat/message', data).then(res => res.data.data),
 }
