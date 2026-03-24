@@ -63,7 +63,7 @@ async def list_sessions(
             db_sessions = result.scalars().all()
         else:
             result = await db_session.execute(
-                select(func.count()).select_from(SessionDB.__table__)
+                select(func.count()).select_from(SessionDB)
             )
             total = result.scalar()
             
