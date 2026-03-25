@@ -1,5 +1,5 @@
 import React from 'react'
-import { DatabaseOutlined, BookOutlined } from '@ant-design/icons'
+import { DatabaseOutlined, BookOutlined, SettingOutlined } from '@ant-design/icons'
 import { useSettingsStore } from '../../stores/settingsStore'
 
 const SettingsSidebar: React.FC = () => {
@@ -8,6 +8,7 @@ const SettingsSidebar: React.FC = () => {
   const tabs = [
     { key: 'datasource', label: '数据源', icon: <DatabaseOutlined /> },
     { key: 'knowledge', label: '知识', icon: <BookOutlined /> },
+    { key: 'agentConfig', label: 'Agent配置', icon: <SettingOutlined /> },
   ]
 
   return (
@@ -16,7 +17,7 @@ const SettingsSidebar: React.FC = () => {
         <div
           key={tab.key}
           className={`settings-tab ${activeTab === tab.key ? 'active' : ''}`}
-          onClick={() => setActiveTab(tab.key as 'datasource' | 'knowledge')}
+          onClick={() => setActiveTab(tab.key as 'datasource' | 'knowledge' | 'agentConfig')}
         >
           {tab.icon}
           <span>{tab.label}</span>

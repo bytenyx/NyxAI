@@ -4,7 +4,7 @@ import type { Knowledge } from '../types/knowledge'
 
 interface SettingsState {
   isOpen: boolean
-  activeTab: 'datasource' | 'knowledge'
+  activeTab: 'datasource' | 'knowledge' | 'agentConfig'
   slidePanel: {
     open: boolean
     mode: 'add' | 'edit'
@@ -18,7 +18,7 @@ interface SettingsState {
 
   openSettings: () => void
   closeSettings: () => void
-  setActiveTab: (tab: 'datasource' | 'knowledge') => void
+  setActiveTab: (tab: 'datasource' | 'knowledge' | 'agentConfig') => void
   openSlidePanel: (
     mode: 'add' | 'edit',
     type: 'datasource' | 'knowledge',
