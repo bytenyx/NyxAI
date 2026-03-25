@@ -12,7 +12,9 @@ from app.models.knowledge import Knowledge, KnowledgeCreate, KnowledgeUpdate
 from app.services.document_parser import is_allowed_file, parse_document, MAX_FILE_SIZE
 from app.storage.database import get_async_session
 from app.storage.models import KnowledgeDB
+from app.utils.logger import get_logger
 
+logger = get_logger(__name__)
 router = APIRouter(prefix="/api/v1/knowledge", tags=["knowledge"])
 
 
@@ -39,28 +41,32 @@ async def list_knowledge(
     search: Optional[str] = None,
     db_session: AsyncSession = Depends(get_async_session),
 ):
-    query = select(KnowledgeDB).order_by(KnowledgeDB.created_at.desc())
+    try:
+        query = select(KnowledgeDB).order_by(KnowledgeDB.created_at.desc())
 
-    if type:
-        query = query.where(KnowledgeDB.knowledge_type == type)
+        if type:
+            query = query.where(KnowledgeDB.knowledge_type == type)
 
-    if search:
-        query = query.where(KnowledgeDB.title.ilike(f"%{search}%"))
+        if search:
+            query = query.where(KnowledgeDB.title.ilike(f"%{search}%"))
 
-    offset = (page - 1) * page_size
-    query = query.offset(offset).limit(page_size)
+        offset = (page - 1) * page_size
+        query = query.offset(offset).limit(page_size)
 
-    result = await db_session.execute(query)
-    knowledge_list = result.scalars().all()
+        result = await db_session.execute(query)
+        knowledge_list = result.scalars().all()
 
-    if tags:
-        tag_list = [t.strip() for t in tags.split(",")]
-        knowledge_list = [
-            k for k in knowledge_list
-            if k.tags and any(tag in k.tags for tag in tag_list)
-        ]
+        if tags:
+            tag_list = [t.strip() for t in tags.split(",")]
+            knowledge_list = [
+                k for k in knowledge_list
+                if k.tags and any(tag in k.tags for tag in tag_list)
+            ]
 
-    return [_to_response(k) for k in knowledge_list]
+        return [_to_response(k) for k in knowledge_list]
+    except Exception as e:
+        logger.error(f"[API] Failed to list knowledge: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"获取知识列表失败: {str(e)}")
 
 
 @router.post("", response_model=KnowledgeResponse)
@@ -195,6 +201,7 @@ async def delete_knowledge(
 
 
 def _to_response(k: KnowledgeDB) -> KnowledgeResponse:
+    from datetime import datetime
     return KnowledgeResponse(
         id=k.id,
         knowledge_type=k.knowledge_type,
@@ -205,6 +212,6 @@ def _to_response(k: KnowledgeDB) -> KnowledgeResponse:
         tags=k.tags or [],
         category=k.category,
         reference_count=k.reference_count or 0,
-        created_at=k.created_at.isoformat(),
-        updated_at=k.updated_at.isoformat(),
+        created_at=(k.created_at or datetime.now()).isoformat(),
+        updated_at=(k.updated_at or datetime.now()).isoformat(),
     )

@@ -5,34 +5,56 @@ from pathlib import Path
 DB_PATH = Path(__file__).parent / "nyxai.db"
 
 
+def migrate_sessions_table(cursor):
+    cursor.execute("PRAGMA table_info(sessions)")
+    columns = [row[1] for row in cursor.fetchall()]
+    
+    migrations = [
+        ("title", "VARCHAR(200)"),
+        ("message_count", "INTEGER DEFAULT 0"),
+        ("last_message", "TEXT"),
+    ]
+    
+    for col_name, col_type in migrations:
+        if col_name not in columns:
+            print(f"Adding '{col_name}' column to sessions table...")
+            cursor.execute(f"ALTER TABLE sessions ADD COLUMN {col_name} {col_type}")
+            print(f"✓ Added '{col_name}' column")
+        else:
+            print(f"✓ sessions.'{col_name}' column already exists")
+
+
+def migrate_knowledge_table(cursor):
+    cursor.execute("PRAGMA table_info(knowledge)")
+    columns = [row[1] for row in cursor.fetchall()]
+    
+    migrations = [
+        ("file_url", "VARCHAR(500)"),
+        ("file_name", "VARCHAR(200)"),
+        ("tags", "JSON"),
+        ("category", "VARCHAR(100)"),
+        ("reference_count", "INTEGER DEFAULT 0"),
+    ]
+    
+    for col_name, col_type in migrations:
+        if col_name not in columns:
+            print(f"Adding '{col_name}' column to knowledge table...")
+            cursor.execute(f"ALTER TABLE knowledge ADD COLUMN {col_name} {col_type}")
+            print(f"✓ Added '{col_name}' column")
+        else:
+            print(f"✓ knowledge.'{col_name}' column already exists")
+
+
 def migrate_database():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     try:
-        cursor.execute("PRAGMA table_info(sessions)")
-        columns = [row[1] for row in cursor.fetchall()]
+        print("Migrating sessions table...")
+        migrate_sessions_table(cursor)
         
-        if "title" not in columns:
-            print("Adding 'title' column to sessions table...")
-            cursor.execute("ALTER TABLE sessions ADD COLUMN title VARCHAR(200)")
-            print("✓ Added 'title' column")
-        else:
-            print("✓ 'title' column already exists")
-        
-        if "message_count" not in columns:
-            print("Adding 'message_count' column to sessions table...")
-            cursor.execute("ALTER TABLE sessions ADD COLUMN message_count INTEGER DEFAULT 0")
-            print("✓ Added 'message_count' column")
-        else:
-            print("✓ 'message_count' column already exists")
-        
-        if "last_message" not in columns:
-            print("Adding 'last_message' column to sessions table...")
-            cursor.execute("ALTER TABLE sessions ADD COLUMN last_message TEXT")
-            print("✓ Added 'last_message' column")
-        else:
-            print("✓ 'last_message' column already exists")
+        print("\nMigrating knowledge table...")
+        migrate_knowledge_table(cursor)
         
         conn.commit()
         print("\n✅ Database migration completed successfully!")
