@@ -15,6 +15,7 @@ from app.api.knowledge import router as knowledge_router
 from app.api.webhook import router as webhook_router
 from app.api.websocket import router as websocket_router
 from app.api.datasources import router as datasources_router
+from app.api.agent_configs import router as agent_configs_router
 
 settings = get_settings()
 
@@ -54,6 +55,7 @@ app.include_router(knowledge_router)
 app.include_router(webhook_router)
 app.include_router(websocket_router)
 app.include_router(datasources_router)
+app.include_router(agent_configs_router)
 
 
 @app.get("/")
