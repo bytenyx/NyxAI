@@ -10,6 +10,7 @@ from app.agents.base import AgentContext
 from app.agents.orchestrator import OrchestratorAgent
 from app.storage.repositories.session_repo import SessionRepository
 from app.storage.repositories.evidence_repo import EvidenceRepository
+from app.storage.repositories.agent_exec_repo import AgentExecutionRepository
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -35,10 +36,10 @@ class ConnectionManager:
         self._connection_start[session_id] = time.time()
         logger.info(f"[WebSocket] Connection established session_id={session_id} total_connections={len(self.active_connections)}")
 
-    def disconnect(self, session_id: str):
+    async def disconnect(self, session_id: str):
         if session_id in self.active_connections:
             try:
-                self.active_connections[session_id].close()
+                await self.active_connections[session_id].close()
             except Exception as e:
                 logger.warning(f"[WebSocket] Error closing connection for session_id={session_id}: {e}")
             del self.active_connections[session_id]
@@ -62,6 +63,7 @@ class ConnectionManager:
         if session_id in self.active_connections:
             message = {
                 "type": event_type,
+                "session_id": session_id,
                 "agent": agent,
                 "payload": payload,
                 "timestamp": datetime.utcnow().isoformat(),
@@ -239,10 +241,12 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
 async def handle_chat_message(session_id: str, content: str, db_session):
     session_repo = SessionRepository(db_session)
     evidence_repo = EvidenceRepository(db_session)
+    agent_exec_repo = AgentExecutionRepository(db_session)
     
     orchestrator = OrchestratorAgent(
         session_repo=session_repo,
         evidence_repo=evidence_repo,
+        agent_exec_repo=agent_exec_repo,
     )
 
     async for event in orchestrator.run_stream(session_id, content):

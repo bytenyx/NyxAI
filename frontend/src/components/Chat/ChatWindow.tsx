@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Input, Button, message } from 'antd'
 import { SendOutlined } from '@ant-design/icons'
 import { useSessionStore } from '../../stores/sessionStore'
@@ -6,46 +6,90 @@ import { useAgentStore } from '../../stores/agentStore'
 import { getWebSocket } from '../../services/websocket'
 import { sessionsApi } from '../../services/api'
 import AgentProcessPanel from '../Agent/AgentProcessPanel'
-import VerticalTimeline from '../Timeline/VerticalTimeline'
 
 const ChatWindow: React.FC = () => {
   const { currentSession } = useSessionStore()
-  const { isConnected, handleMessage, setConnected, reset, loadFromHistory } = useAgentStore()
+  const { 
+    isConnected, 
+    handleMessage, 
+    setConnected, 
+    reset, 
+    loadFromHistory,
+    saveSessionState,
+    restoreSessionState,
+    setCurrentSessionId,
+  } = useAgentStore()
   const [input, setInput] = useState('')
   const ws = getWebSocket()
+  const prevSessionIdRef = useRef<string | null>(null)
+  const messageHandlerRef = useRef<((message: any) => void) | null>(null)
+  const connectionHandlerRef = useRef<((connected: boolean) => void) | null>(null)
 
   useEffect(() => {
     if (currentSession) {
-      reset()
-      ws.connect(currentSession.id).then(() => {
-        setConnected(true)
-      })
+      const prevSessionId = prevSessionIdRef.current
+      const newSessionId = currentSession.id
 
-      const messageHandler = (message: any) => {
-        handleMessage(message)
+      if (prevSessionId && prevSessionId !== newSessionId) {
+        saveSessionState(prevSessionId)
+        ws.disconnect()
       }
 
+      const restored = restoreSessionState(newSessionId)
+      setCurrentSessionId(newSessionId)
+
+      if (!restored) {
+        reset()
+      }
+
+      ws.connect(newSessionId).then(() => {
+        setConnected(true)
+      }).catch((error) => {
+        console.error('WebSocket connection failed:', error)
+      })
+
+      if (messageHandlerRef.current) {
+        ws.off('*', messageHandlerRef.current)
+      }
+      if (connectionHandlerRef.current) {
+        ws.offConnection(connectionHandlerRef.current)
+      }
+
+      const messageHandler = (msg: any) => {
+        handleMessage(msg)
+      }
       const connectionHandler = (connected: boolean) => {
         setConnected(connected)
       }
 
+      messageHandlerRef.current = messageHandler
+      connectionHandlerRef.current = connectionHandler
+
       ws.on('*', messageHandler)
       ws.onConnection(connectionHandler)
 
-      sessionsApi.getExecutions(currentSession.id)
-        .then((executions) => {
-          if (executions && executions.length > 0) {
-            loadFromHistory(executions)
-          }
-        })
-        .catch((error) => {
-          console.error('Failed to load session history:', error)
-          message.error('加载历史会话失败')
-        })
+      if (!restored) {
+        sessionsApi.getExecutions(newSessionId)
+          .then((executions) => {
+            if (executions && executions.length > 0) {
+              loadFromHistory(executions)
+            }
+          })
+          .catch((error) => {
+            console.error('Failed to load session history:', error)
+            message.error('加载历史会话失败')
+          })
+      }
+
+      prevSessionIdRef.current = newSessionId
 
       return () => {
-        ws.off('*', messageHandler)
-        ws.offConnection(connectionHandler)
+        if (messageHandlerRef.current) {
+          ws.off('*', messageHandlerRef.current)
+        }
+        if (connectionHandlerRef.current) {
+          ws.offConnection(connectionHandlerRef.current)
+        }
         ws.disconnect()
       }
     }
@@ -70,7 +114,6 @@ const ChatWindow: React.FC = () => {
     <div className="chat-window">
       <div className="chat-content">
         <AgentProcessPanel />
-        <VerticalTimeline />
       </div>
 
       <div className="chat-input">

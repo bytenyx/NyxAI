@@ -7,6 +7,7 @@ import {
   CheckCircleOutlined,
   LoadingOutlined,
   CloseCircleOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons'
 import type { AgentIdentity, ToolCallRecord } from '../../types/agent'
 import ThinkingStream from './ThinkingStream'
@@ -18,6 +19,22 @@ interface AgentCardProps {
   thoughts: string[]
   toolCalls: ToolCallRecord[]
   result?: string
+  startedAt?: string
+  completedAt?: string
+  durationMs?: number
+}
+
+const formatTime = (timestamp?: string): string => {
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
+  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+const formatDuration = (ms?: number): string => {
+  if (!ms) return ''
+  if (ms < 1000) return `${ms}ms`
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
+  return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`
 }
 
 const agentIcons: Record<string, React.ReactNode> = {
@@ -46,14 +63,46 @@ const AgentCard: React.FC<AgentCardProps> = ({
   thoughts,
   toolCalls,
   result,
+  startedAt,
+  completedAt,
+  durationMs,
 }) => {
   const [expanded, setExpanded] = useState(true)
+
+  const renderTimeInfo = () => {
+    if (!startedAt) return null
+    
+    return (
+      <div className="agent-time-info" style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '8px', 
+        marginLeft: 'auto',
+        marginRight: '12px',
+        color: '#8c8c8c',
+        fontSize: '12px'
+      }}>
+        <ClockCircleOutlined />
+        <span>{formatTime(startedAt)}</span>
+        {durationMs && (
+          <span style={{ marginLeft: '4px' }}>
+            (耗时: {formatDuration(durationMs)})
+          </span>
+        )}
+        {completedAt && status === 'completed' && (
+          <span style={{ marginLeft: '4px' }}>
+            → {formatTime(completedAt)}
+          </span>
+        )}
+      </div>
+    )
+  }
 
   return (
     <Card
       className="agent-card"
       title={
-        <div className="agent-card-header">
+        <div className="agent-card-header" style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
           <span className="agent-icon">
             {agentIcons[agent.type] || agent.icon}
           </span>
@@ -61,6 +110,7 @@ const AgentCard: React.FC<AgentCardProps> = ({
           <Tag color={statusColors[status]}>
             {statusIcons[status]} {status}
           </Tag>
+          {renderTimeInfo()}
         </div>
       }
       extra={

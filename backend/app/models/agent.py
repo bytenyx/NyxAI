@@ -45,6 +45,7 @@ class AgentExecution(AgentExecutionBase):
 
 class ServerMessage(BaseModel):
     type: str
+    session_id: Optional[str] = None
     agent: Optional[AgentIdentity] = None
     payload: Any
     timestamp: str

@@ -10,6 +10,7 @@ from app.models.session import SessionStatus
 from app.storage.database import get_async_session
 from app.storage.repositories.session_repo import SessionRepository
 from app.storage.repositories.evidence_repo import EvidenceRepository
+from app.storage.repositories.agent_exec_repo import AgentExecutionRepository
 
 router = APIRouter(prefix="/webhook", tags=["webhook"])
 
@@ -57,6 +58,7 @@ async def process_alert(
     alert: Alert,
     session_repo: SessionRepository,
     evidence_repo: EvidenceRepository,
+    agent_exec_repo: AgentExecutionRepository,
 ):
     query_parts = [
         f"告警名称: {alert.labels.alertname}",
@@ -78,6 +80,7 @@ async def process_alert(
     orchestrator = OrchestratorAgent(
         session_repo=session_repo,
         evidence_repo=evidence_repo,
+        agent_exec_repo=agent_exec_repo,
     )
     context = AgentContext(
         session_id=session_id,
@@ -100,6 +103,7 @@ async def receive_alert(
 ):
     session_repo = SessionRepository(db_session)
     evidence_repo = EvidenceRepository(db_session)
+    agent_exec_repo = AgentExecutionRepository(db_session)
     
     firing_alerts = [a for a in request.alerts if a.status == "firing"]
     
@@ -125,6 +129,7 @@ async def receive_alert(
         alert,
         session_repo,
         evidence_repo,
+        agent_exec_repo,
     )
     
     return WebhookResponse(
@@ -142,6 +147,7 @@ async def receive_custom_webhook(
 ):
     session_repo = SessionRepository(db_session)
     evidence_repo = EvidenceRepository(db_session)
+    agent_exec_repo = AgentExecutionRepository(db_session)
     
     event_type = request.get("event_type", "unknown")
     event_source = request.get("source", "custom")
@@ -159,6 +165,7 @@ async def receive_custom_webhook(
         orchestrator = OrchestratorAgent(
             session_repo=session_repo,
             evidence_repo=evidence_repo,
+            agent_exec_repo=agent_exec_repo,
         )
         context = AgentContext(
             session_id=session.id,

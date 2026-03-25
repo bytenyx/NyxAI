@@ -19,6 +19,9 @@ const AgentProcessPanel: React.FC = () => {
             thoughts={agent.thoughts}
             toolCalls={agent.tool_calls}
             result={agent.result}
+            startedAt={agent.started_at}
+            completedAt={agent.completed_at}
+            durationMs={agent.duration_ms}
           />
           {index < agentList.length - 1 && handoffs[index] && (
             <HandoffIndicator

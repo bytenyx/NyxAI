@@ -12,6 +12,7 @@ from app.models.session import SessionStatus
 from app.storage.database import get_async_session
 from app.storage.repositories.session_repo import SessionRepository
 from app.storage.repositories.evidence_repo import EvidenceRepository
+from app.storage.repositories.agent_exec_repo import AgentExecutionRepository
 import json
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
@@ -52,6 +53,7 @@ async def chat_message(
     try:
         session_repo = SessionRepository(db_session)
         evidence_repo = EvidenceRepository(db_session)
+        agent_exec_repo = AgentExecutionRepository(db_session)
         
         if not request.session_id:
             session = await session_repo.create(
@@ -76,6 +78,7 @@ async def chat_message(
         orchestrator = OrchestratorAgent(
             session_repo=session_repo,
             evidence_repo=evidence_repo,
+            agent_exec_repo=agent_exec_repo,
         )
         context = AgentContext(
             session_id=session_id,
@@ -154,6 +157,7 @@ async def chat_stream(
 ):
     session_repo = SessionRepository(db_session)
     evidence_repo = EvidenceRepository(db_session)
+    agent_exec_repo = AgentExecutionRepository(db_session)
     
     if not request.session_id:
         session = await session_repo.create(
@@ -183,6 +187,7 @@ async def chat_stream(
         orchestrator = OrchestratorAgent(
             session_repo=session_repo,
             evidence_repo=evidence_repo,
+            agent_exec_repo=agent_exec_repo,
         )
         context = AgentContext(
             session_id=session_id,

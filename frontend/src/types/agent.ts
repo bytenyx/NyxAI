@@ -29,6 +29,7 @@ export interface AgentExecution {
 
 export interface ServerMessage {
   type: string
+  session_id?: string
   agent?: AgentIdentity
   payload: unknown
   timestamp: string

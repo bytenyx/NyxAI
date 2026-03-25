@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import re
@@ -18,6 +19,7 @@ class LLMConfig:
     model: str
     api_key: Optional[str] = None
     base_url: Optional[str] = None
+    mock_delay: float = 0.0
 
 
 @dataclass
@@ -35,6 +37,7 @@ class LLMService:
             model=settings.LLM_MODEL,
             api_key=settings.LLM_API_KEY,
             base_url=settings.LLM_BASE_URL,
+            mock_delay=settings.LLM_MOCK_DELAY,
         )
         self._openai_client = None
 
@@ -74,6 +77,9 @@ class LLMService:
         try:
             if self.config.provider == "mock":
                 logger.info(f"[LLM] Using mock provider")
+                if self.config.mock_delay > 0:
+                    logger.info(f"[LLM] Simulating delay: {self.config.mock_delay}s")
+                    await asyncio.sleep(self.config.mock_delay)
                 response = LLMResponse(
                     content=self._get_mock_response(prompt, expect_json),
                     usage={"prompt_tokens": 0, "completion_tokens": 1},

@@ -1,31 +1,91 @@
 import { create } from 'zustand'
 import type { AgentIdentity, AgentExecution, TimelineNode, ServerMessage } from '../types/agent'
 
+interface SessionStateCache {
+  agents: Record<string, AgentExecution>
+  timeline: TimelineNode[]
+  sequence: number
+  hasRunningAgent: boolean
+}
+
 interface AgentState {
   agents: Record<string, AgentExecution>
   currentAgent: string | null
+  currentSessionId: string | null
   timeline: TimelineNode[]
   sequence: number
   isConnected: boolean
+  sessionStates: Record<string, SessionStateCache>
 
   setCurrentAgent: (agentId: string | null) => void
+  setCurrentSessionId: (sessionId: string | null) => void
   handleMessage: (message: ServerMessage) => void
   setConnected: (connected: boolean) => void
   reset: () => void
+  saveSessionState: (sessionId: string) => void
+  restoreSessionState: (sessionId: string) => boolean
   loadFromHistory: (executions: AgentExecution[]) => void
+  hasRunningAgent: () => boolean
 }
 
 export const useAgentStore = create<AgentState>((set, get) => ({
   agents: {},
   currentAgent: null,
+  currentSessionId: null,
   timeline: [],
   sequence: 0,
   isConnected: false,
+  sessionStates: {},
 
   setCurrentAgent: (agentId) => set({ currentAgent: agentId }),
 
-  handleMessage: (message) => {
+  setCurrentSessionId: (sessionId) => set({ currentSessionId: sessionId }),
+
+  hasRunningAgent: () => {
+    const { agents } = get()
+    return Object.values(agents).some((agent) => agent.status === 'running')
+  },
+
+  saveSessionState: (sessionId) => {
     const { agents, timeline, sequence } = get()
+    const hasRunning = Object.values(agents).some((agent) => agent.status === 'running')
+    
+    set((state) => ({
+      sessionStates: {
+        ...state.sessionStates,
+        [sessionId]: {
+          agents: { ...agents },
+          timeline: [...timeline],
+          sequence,
+          hasRunningAgent: hasRunning,
+        },
+      },
+    }))
+  },
+
+  restoreSessionState: (sessionId) => {
+    const { sessionStates } = get()
+    const cached = sessionStates[sessionId]
+    
+    if (cached) {
+      set({
+        agents: cached.agents,
+        timeline: cached.timeline,
+        sequence: cached.sequence,
+        currentSessionId: sessionId,
+      })
+      return true
+    }
+    return false
+  },
+
+  handleMessage: (message) => {
+    const { agents, timeline, sequence, currentSessionId } = get()
+    
+    if (message.session_id && message.session_id !== currentSessionId) {
+      return
+    }
+    
     const newAgents = { ...agents }
     let newTimeline = [...timeline]
 
@@ -108,11 +168,18 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
       case 'agent_complete':
         if (message.agent && newAgents[message.agent.id]) {
+          const startedAt = newAgents[message.agent.id].started_at
+          const completedAt = message.timestamp
+          const durationMs = startedAt 
+            ? new Date(completedAt).getTime() - new Date(startedAt).getTime() 
+            : undefined
+
           newAgents[message.agent.id] = {
             ...newAgents[message.agent.id],
             status: 'completed',
             result: (message.payload as { summary?: string }).summary,
-            completed_at: message.timestamp,
+            completed_at: completedAt,
+            duration_ms: durationMs,
           }
 
           const timelineIdx = newTimeline.findIndex((n) => n.id.startsWith(`${message.agent!.id}-`))
