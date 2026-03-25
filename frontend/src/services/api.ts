@@ -20,6 +20,8 @@ export const sessionsApi = {
     api.get<ApiResponse<AgentExecution[]>>(`/sessions/${id}/executions`).then(res => res.data.data),
   create: (data: { trigger_type: string; trigger_source: string; title?: string }) =>
     api.post<ApiResponse<Session>>('/sessions', data).then(res => res.data.data),
+  update: (id: string, data: { title?: string }) =>
+    api.patch<ApiResponse<Session>>(`/sessions/${id}`, data).then(res => res.data.data),
   delete: (id: string) =>
     api.delete<ApiResponse<null>>(`/sessions/${id}`).then(res => res.data),
 }

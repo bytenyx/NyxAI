@@ -24,6 +24,10 @@ class CreateSessionRequest(BaseModel):
     title: str | None = None
 
 
+class UpdateSessionRequest(BaseModel):
+    title: str | None = None
+
+
 @router.post("", response_model=ApiResponse[Session])
 async def create_session(
     request: CreateSessionRequest,
@@ -131,6 +135,28 @@ async def get_session(
     except Exception as e:
         logger.error(f"[API] Failed to get session session_id={session_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"获取会话失败: {str(e)}")
+
+
+@router.patch("/{session_id}", response_model=ApiResponse[Session])
+async def update_session(
+    session_id: str,
+    request: UpdateSessionRequest,
+    db_session: AsyncSession = Depends(get_async_session),
+):
+    logger.info(f"[API] PATCH /api/v1/sessions/{session_id} - Updating session")
+    try:
+        repo = SessionRepository(db_session)
+        session = await repo.update_session(session_id, title=request.title)
+        if not session:
+            logger.warning(f"[API] Session not found session_id={session_id}")
+            raise HTTPException(status_code=404, detail="Session not found")
+        logger.info(f"[API] Session updated successfully session_id={session_id}")
+        return ApiResponse.success_response(data=session, message="会话更新成功")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[API] Failed to update session session_id={session_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"更新会话失败: {str(e)}")
 
 
 @router.get("/{session_id}/executions", response_model=ApiResponse[list[AgentExecution]])

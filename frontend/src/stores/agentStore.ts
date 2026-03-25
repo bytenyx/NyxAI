@@ -91,6 +91,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
     switch (message.type) {
       case 'orchestrator_status':
+        newAgents = {}
         newTimeline = [
           {
             id: `orchestrator-${sequence}`,

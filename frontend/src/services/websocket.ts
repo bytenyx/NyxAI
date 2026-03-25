@@ -23,59 +23,93 @@ export class ChatWebSocket {
 
   connect(sessionId: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      const wsUrl = `${this.url}/api/v1/ws/chat/${sessionId}`
-      this.ws = new WebSocket(wsUrl)
-
-      this.ws.onopen = () => {
-        console.log('WebSocket connected')
-        this.reconnectAttempts = 0
-        this.startHeartbeat()
-        this.notifyConnectionHandlers(true)
-
-        this.messageQueue.forEach((msg) => {
-          this.ws?.send(msg)
-        })
-        this.messageQueue = []
-
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        console.log('WebSocket already connected')
         resolve()
+        return
       }
 
-      this.ws.onmessage = (event) => {
-        try {
-          const message: ServerMessage = JSON.parse(event.data)
-          
-          if (message.type === 'ping') {
-            console.log('Received ping from server')
-            this.sendPong()
-            return
+      if (this.ws?.readyState === WebSocket.CONNECTING) {
+        console.log('WebSocket is connecting, waiting...')
+        const checkInterval = setInterval(() => {
+          if (this.ws?.readyState === WebSocket.OPEN) {
+            clearInterval(checkInterval)
+            resolve()
+          } else if (this.ws?.readyState === WebSocket.CLOSED) {
+            clearInterval(checkInterval)
+            this._createConnection(sessionId, resolve, reject)
           }
-          
-          if (message.type === 'pong') {
-            console.log('Received pong from server')
-            this.resetHeartbeatTimeout()
-            return
-          }
-          
-          this.emit(message.type, message)
-          this.emit('*', message)
-        } catch (e) {
-          console.error('Failed to parse WebSocket message:', e)
-        }
+        }, 100)
+        return
       }
 
-      this.ws.onclose = () => {
-        console.log('WebSocket disconnected')
-        this.stopHeartbeat()
-        this.notifyConnectionHandlers(false)
-        this.attemptReconnect(sessionId)
-      }
-
-      this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error)
-        this.stopHeartbeat()
-        reject(error)
-      }
+      this._createConnection(sessionId, resolve, reject)
     })
+  }
+
+  private _createConnection(sessionId: string, resolve: () => void, reject: (error: any) => void) {
+    const wsUrl = `${this.url}/api/v1/ws/chat/${sessionId}`
+    
+    if (this.ws) {
+      this.stopHeartbeat()
+      this.ws.onclose = null
+      this.ws.onerror = null
+      this.ws.onmessage = null
+      this.ws.onopen = null
+      this.ws.close()
+    }
+    
+    this.ws = new WebSocket(wsUrl)
+
+    this.ws.onopen = () => {
+      console.log('WebSocket connected')
+      this.reconnectAttempts = 0
+      this.startHeartbeat()
+      this.notifyConnectionHandlers(true)
+
+      this.messageQueue.forEach((msg) => {
+        this.ws?.send(msg)
+      })
+      this.messageQueue = []
+
+      resolve()
+    }
+
+    this.ws.onmessage = (event) => {
+      try {
+        const message: ServerMessage = JSON.parse(event.data)
+        
+        if (message.type === 'ping') {
+          console.log('Received ping from server')
+          this.sendPong()
+          return
+        }
+        
+        if (message.type === 'pong') {
+          console.log('Received pong from server')
+          this.resetHeartbeatTimeout()
+          return
+        }
+        
+        this.emit(message.type, message)
+        this.emit('*', message)
+      } catch (e) {
+        console.error('Failed to parse WebSocket message:', e)
+      }
+    }
+
+    this.ws.onclose = () => {
+      console.log('WebSocket disconnected')
+      this.stopHeartbeat()
+      this.notifyConnectionHandlers(false)
+      this.attemptReconnect(sessionId)
+    }
+
+    this.ws.onerror = (error) => {
+      console.error('WebSocket error:', error)
+      this.stopHeartbeat()
+      reject(error)
+    }
   }
 
   private startHeartbeat() {
@@ -142,10 +176,16 @@ export class ChatWebSocket {
 
   disconnect() {
     this.stopHeartbeat()
+    this.reconnectAttempts = this.maxReconnectAttempts
     if (this.ws) {
+      this.ws.onclose = null
+      this.ws.onerror = null
+      this.ws.onmessage = null
+      this.ws.onopen = null
       this.ws.close()
       this.ws = null
     }
+    this.messageQueue = []
   }
 
   on(eventType: string, handler: MessageHandler) {

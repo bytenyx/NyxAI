@@ -78,6 +78,67 @@
   color: #999;
 }
 
+.chat-window-welcome {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+}
+
+.welcome-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 700px;
+  width: 90%;
+  padding: 40px;
+}
+
+.welcome-title {
+  font-size: 42px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.welcome-subtitle {
+  font-size: 18px;
+  color: #666;
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+.welcome-input-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: #fff;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.welcome-textarea {
+  font-size: 16px !important;
+}
+
+.welcome-textarea textarea {
+  font-size: 16px !important;
+  padding: 16px !important;
+  border-radius: 12px !important;
+}
+
+.welcome-send-btn {
+  align-self: flex-end;
+  height: 44px;
+  padding: 0 32px;
+  font-size: 16px;
+  border-radius: 8px;
+}
+
 .chat-content {
   flex: 1;
   overflow-y: auto;

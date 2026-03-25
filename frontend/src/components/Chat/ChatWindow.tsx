@@ -8,7 +8,7 @@ import { sessionsApi } from '../../services/api'
 import AgentProcessPanel from '../Agent/AgentProcessPanel'
 
 const ChatWindow: React.FC = () => {
-  const { currentSession } = useSessionStore()
+  const { currentSession, setCurrentSession, addSession, updateSession } = useSessionStore()
   const { 
     isConnected, 
     handleMessage, 
@@ -18,12 +18,15 @@ const ChatWindow: React.FC = () => {
     saveSessionState,
     restoreSessionState,
     setCurrentSessionId,
+    timeline,
   } = useAgentStore()
   const [input, setInput] = useState('')
+  const [isCreatingSession, setIsCreatingSession] = useState(false)
   const ws = getWebSocket()
   const prevSessionIdRef = useRef<string | null>(null)
   const messageHandlerRef = useRef<((message: any) => void) | null>(null)
   const connectionHandlerRef = useRef<((connected: boolean) => void) | null>(null)
+  const pendingMessageRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (currentSession) {
@@ -44,6 +47,10 @@ const ChatWindow: React.FC = () => {
 
       ws.connect(newSessionId).then(() => {
         setConnected(true)
+        if (pendingMessageRef.current) {
+          ws.sendChat(pendingMessageRef.current)
+          pendingMessageRef.current = null
+        }
       }).catch((error) => {
         console.error('WebSocket connection failed:', error)
       })
@@ -102,10 +109,83 @@ const ChatWindow: React.FC = () => {
     }
   }
 
-  if (!currentSession) {
+  const generateTitleFromMessage = (msg: string): string => {
+    const maxLength = 10
+    let title = msg.trim().replace(/\n/g, ' ')
+    if (title.length > maxLength) {
+      title = title.substring(0, maxLength) + '...'
+    }
+    return title || '新会话'
+  }
+
+  const handleWelcomeSend = async () => {
+    if (!input.trim() || isCreatingSession) return
+
+    setIsCreatingSession(true)
+    const messageToSend = input.trim()
+    const title = generateTitleFromMessage(messageToSend)
+    try {
+      if (currentSession) {
+        const updatedSession = await sessionsApi.update(currentSession.id, { title })
+        updateSession(updatedSession)
+        if (ws.isConnected()) {
+          ws.sendChat(messageToSend)
+        } else {
+          pendingMessageRef.current = messageToSend
+        }
+      } else {
+        const response = await sessionsApi.create({
+          trigger_type: 'manual',
+          trigger_source: 'user',
+          title,
+        })
+        pendingMessageRef.current = messageToSend
+        setCurrentSession(response)
+        addSession(response)
+      }
+      setInput('')
+    } catch (error) {
+      console.error('Failed to create session:', error)
+      message.error('创建会话失败')
+    } finally {
+      setIsCreatingSession(false)
+    }
+  }
+
+  const showWelcome = !currentSession || timeline.length === 0
+
+  if (showWelcome) {
     return (
-      <div className="chat-window-empty">
-        <p>选择或创建一个会话开始对话</p>
+      <div className="chat-window-welcome">
+        <div className="welcome-content">
+          <h1 className="welcome-title">欢迎使用 NyxAI</h1>
+          <p className="welcome-subtitle">开始一段新的对话</p>
+          <div className="welcome-input-wrapper">
+            <Input.TextArea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="输入您的问题或想法..."
+              autoSize={{ minRows: 3, maxRows: 8 }}
+              className="welcome-textarea"
+              onPressEnter={(e) => {
+                if (!e.shiftKey) {
+                  e.preventDefault()
+                  handleWelcomeSend()
+                }
+              }}
+            />
+            <Button
+              type="primary"
+              size="large"
+              icon={<SendOutlined />}
+              onClick={handleWelcomeSend}
+              loading={isCreatingSession}
+              className="welcome-send-btn"
+            >
+              开始对话
+            </Button>
+          </div>
+        </div>
       </div>
     )
   }

@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     LLM_MODEL: str = "gpt-4o"
     LLM_API_KEY: Optional[str] = None
     LLM_BASE_URL: Optional[str] = None
+    LLM_MOCK_DELAY: float = 0.0
     
     SKILLS_DIR: str = "backend/skills"
     

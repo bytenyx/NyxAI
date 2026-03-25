@@ -183,6 +183,7 @@ class SessionRepository:
         self,
         session_id: str,
         status: Optional[SessionStatus] = None,
+        title: Optional[str] = None,
         investigation: Optional[Dict[str, Any]] = None,
         root_cause: Optional[Dict[str, Any]] = None,
         recovery_plan: Optional[Dict[str, Any]] = None,
@@ -196,6 +197,8 @@ class SessionRepository:
         
         if status is not None:
             db_session.status = status.value
+        if title is not None:
+            db_session.title = title
         if investigation is not None:
             db_session.investigation = investigation
         if root_cause is not None:

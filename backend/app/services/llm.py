@@ -116,21 +116,71 @@ class LLMService:
             raise
 
     def _get_mock_response(self, prompt: str, expect_json: bool) -> str:
-        if expect_json:
+        if not expect_json:
+            return "Mock response for: " + prompt[:100]
+        
+        if "调查" in prompt or "investigation" in prompt.lower():
             return json.dumps({
-                "summary": "Mock调查摘要",
-                "anomalies": [{"name": "mock_anomaly", "severity": "medium"}],
-                "evidence": [{"description": "mock证据", "source": "mock"}],
-                "root_cause": "Mock根因分析结果",
+                "anomalies": [
+                    {"name": "CPU使用率异常", "severity": "high", "description": "CPU使用率持续超过90%"},
+                    {"name": "内存泄漏", "severity": "medium", "description": "内存使用量持续增长"},
+                ],
+                "evidence": [
+                    {"description": "Prometheus指标显示CPU使用率异常", "source": "prometheus"},
+                    {"description": "日志中发现内存警告", "source": "loki"},
+                ],
+                "summary": "发现CPU和内存相关异常，需要进一步分析根因",
                 "confidence": 0.85,
-                "affected_components": ["component_a"],
-                "reasoning_report": "Mock推理报告",
-                "actions": [{"action_type": "investigate", "description": "进一步调查", "risk_level": "low"}],
-                "risk_level": "low",
-                "requires_confirmation": False,
-                "rollback_plan": "Mock回滚方案",
             }, ensure_ascii=False)
-        return "Mock response for: " + prompt[:100]
+        
+        if "根因" in prompt or "diagnosis" in prompt.lower() or "分析" in prompt:
+            return json.dumps({
+                "root_cause": "数据库连接池耗尽导致请求排队，进而引发CPU飙升",
+                "confidence": 0.82,
+                "affected_components": ["api-server", "database-pool", "connection-manager"],
+                "reasoning_report": "1. CPU使用率异常与数据库查询延迟高度相关\n2. 连接池监控显示活跃连接数达到上限\n3. 日志显示连接等待超时错误",
+                "evidence_chain": [
+                    {"description": "CPU使用率异常", "inference": "观察到CPU使用率与请求延迟正相关"},
+                    {"description": "数据库连接池满", "inference": "连接池监控数据确认"},
+                    {"description": "请求排队超时", "inference": "应用日志确认超时错误"},
+                ],
+            }, ensure_ascii=False)
+        
+        if "恢复" in prompt or "recovery" in prompt.lower() or "方案" in prompt:
+            return json.dumps({
+                "actions": [
+                    {
+                        "action_type": "configure",
+                        "description": "增加数据库连接池大小",
+                        "risk_level": "low",
+                        "target": "database-pool",
+                    },
+                    {
+                        "action_type": "restart",
+                        "description": "重启受影响的API服务实例",
+                        "risk_level": "medium",
+                        "target": "api-server",
+                    },
+                ],
+                "risk_level": "medium",
+                "requires_confirmation": True,
+                "rollback_plan": "1. 恢复原有连接池配置\n2. 如有问题可快速回滚服务",
+                "estimated_impact": "预计5分钟内完成，期间可能有短暂请求失败",
+            }, ensure_ascii=False)
+        
+        return json.dumps({
+            "summary": "Mock调查摘要",
+            "anomalies": [{"name": "mock_anomaly", "severity": "medium"}],
+            "evidence": [{"description": "mock证据", "source": "mock"}],
+            "root_cause": "Mock根因分析结果",
+            "confidence": 0.85,
+            "affected_components": ["component_a"],
+            "reasoning_report": "Mock推理报告",
+            "actions": [{"action_type": "investigate", "description": "进一步调查", "risk_level": "low"}],
+            "risk_level": "low",
+            "requires_confirmation": False,
+            "rollback_plan": "Mock回滚方案",
+        }, ensure_ascii=False)
 
     def _parse_json_response(self, content: str) -> Optional[Dict[str, Any]]:
         if not content:
