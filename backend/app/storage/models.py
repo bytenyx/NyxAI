@@ -97,3 +97,33 @@ class AgentExecutionDB(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     duration_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+
+class AgentConfigDB(Base):
+    __tablename__ = "agent_configs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    agent_type: Mapped[str] = mapped_column(String(50), index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    system_prompt: Mapped[str] = mapped_column(Text)
+    allowed_skills: Mapped[list] = mapped_column(JSON, default=list)
+    is_active: Mapped[bool] = mapped_column(default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class AgentConfigVersionDB(Base):
+    __tablename__ = "agent_config_versions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    config_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("agent_configs.id"), nullable=False, index=True
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    system_prompt: Mapped[str] = mapped_column(Text)
+    allowed_skills: Mapped[list] = mapped_column(JSON, default=list)
+    changed_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    change_reason: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
