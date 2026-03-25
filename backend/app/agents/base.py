@@ -1,8 +1,12 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from app.skills.registry import SkillRegistry
 from app.skills.types import Skill
+
+if TYPE_CHECKING:
+    from app.models.agent_config import AgentConfig
+    from app.storage.repositories.agent_config_repo import AgentConfigRepository
 
 
 @dataclass
@@ -23,9 +27,34 @@ class AgentResult:
 
 
 class BaseAgent(ABC):
-    def __init__(self, name: str, skill_registry: Optional[SkillRegistry] = None):
+    def __init__(
+        self,
+        name: str,
+        skill_registry: Optional[SkillRegistry] = None,
+        config_repo: Optional["AgentConfigRepository"] = None,
+    ):
         self.name = name
         self._skill_registry = skill_registry
+        self._config_repo = config_repo
+        self._config: Optional["AgentConfig"] = None
+
+    async def load_config(self) -> Optional["AgentConfig"]:
+        if not self._config_repo:
+            return None
+        config = await self._config_repo.get_by_type(self.name)
+        if config:
+            self._config = config
+        return config
+
+    def get_system_prompt(self, default: str = "") -> str:
+        if self._config:
+            return self._config.system_prompt
+        return default
+
+    def get_allowed_skills(self, default: List[str] = None) -> List[str]:
+        if self._config:
+            return self._config.allowed_skills
+        return default or []
 
     @abstractmethod
     async def execute(self, context: AgentContext) -> AgentResult:
@@ -34,11 +63,12 @@ class BaseAgent(ABC):
     async def load_knowledge(self, knowledge_types: List[str]) -> Dict[str, Any]:
         return {}
 
-    def build_skill_prompt(self, allowed_skills: List[str]) -> str:
-        if not self._skill_registry or not allowed_skills:
+    def build_skill_prompt(self, allowed_skills: List[str] = None) -> str:
+        skills = allowed_skills or self.get_allowed_skills()
+        if not self._skill_registry or not skills:
             return ""
         
-        metadata_list = self._skill_registry.get_metadata(allowed_skills)
+        metadata_list = self._skill_registry.get_metadata(skills)
         if not metadata_list:
             return ""
         

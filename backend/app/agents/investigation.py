@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 import uuid
 import time
 
@@ -8,15 +8,24 @@ from app.models.evidence import Evidence, EvidenceType
 from app.services.llm import LLMService
 from app.utils.logger import get_logger
 
+if TYPE_CHECKING:
+    from app.storage.repositories.agent_config_repo import AgentConfigRepository
+
 logger = get_logger(__name__)
 
 
 class InvestigationAgent(BaseAgent):
-    def __init__(self, llm_service: LLMService = None):
-        super().__init__(name="investigation")
+    def __init__(
+        self,
+        llm_service: LLMService = None,
+        config_repo: Optional["AgentConfigRepository"] = None,
+    ):
+        super().__init__(name="investigation", config_repo=config_repo)
         self.llm = llm_service or LLMService()
 
     async def execute(self, context: AgentContext) -> AgentResult:
+        await self.load_config()
+        
         start_time = time.time()
         query = context.query or ""
         session_id = context.session_id
@@ -26,7 +35,7 @@ class InvestigationAgent(BaseAgent):
         logger.info(f"[InvestigationAgent] Query: {query[:200]}{'...' if len(query) > 200 else ''}")
         
         try:
-            system_prompt = """你是一个运维调查专家。你的任务是分析告警或问题描述，
+            default_prompt = """你是一个运维调查专家。你的任务是分析告警或问题描述，
 识别可能的异常点，并收集相关证据。
 
 请严格返回JSON格式的结果（不要包含markdown代码块标记），包含：
@@ -36,6 +45,7 @@ class InvestigationAgent(BaseAgent):
     "summary": "调查摘要",
     "confidence": 0.0-1.0
 }"""
+            system_prompt = self.get_system_prompt(default_prompt)
             
             logger.debug(f"[InvestigationAgent] Calling LLM service")
             llm_start = time.time()

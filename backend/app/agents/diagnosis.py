@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 import uuid
 import time
 
@@ -8,15 +8,24 @@ from app.models.evidence import Evidence, EvidenceNode, EvidenceType
 from app.services.llm import LLMService
 from app.utils.logger import get_logger
 
+if TYPE_CHECKING:
+    from app.storage.repositories.agent_config_repo import AgentConfigRepository
+
 logger = get_logger(__name__)
 
 
 class DiagnosisAgent(BaseAgent):
-    def __init__(self, llm_service: LLMService = None):
-        super().__init__(name="diagnosis")
+    def __init__(
+        self,
+        llm_service: LLMService = None,
+        config_repo: Optional["AgentConfigRepository"] = None,
+    ):
+        super().__init__(name="diagnosis", config_repo=config_repo)
         self.llm = llm_service or LLMService()
 
     async def execute(self, context: AgentContext) -> AgentResult:
+        await self.load_config()
+        
         start_time = time.time()
         query = context.query or ""
         session_id = context.session_id
@@ -29,7 +38,7 @@ class DiagnosisAgent(BaseAgent):
         logger.info(f"[DiagnosisAgent] Investigation confidence: {investigation_confidence:.2f}")
         
         try:
-            system_prompt = """你是一个根因分析专家。你的任务是基于调查结果，
+            default_prompt = """你是一个根因分析专家。你的任务是基于调查结果，
 进行因果推理，确定根本原因，并生成证据链。
 
 请严格返回JSON格式的结果（不要包含markdown代码块标记），包含：
@@ -40,6 +49,7 @@ class DiagnosisAgent(BaseAgent):
     "reasoning_report": "详细推理报告",
     "evidence_chain": [{"description": "证据描述", "inference": "推理步骤"}]
 }"""
+            system_prompt = self.get_system_prompt(default_prompt)
             
             prompt = f"""请分析以下问题的根因：
 问题：{query}

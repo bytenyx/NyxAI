@@ -1,19 +1,28 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 import time
 
 from app.agents.base import AgentContext, AgentResult, BaseAgent
 from app.services.llm import LLMService
 from app.utils.logger import get_logger
 
+if TYPE_CHECKING:
+    from app.storage.repositories.agent_config_repo import AgentConfigRepository
+
 logger = get_logger(__name__)
 
 
 class RecoveryAgent(BaseAgent):
-    def __init__(self, llm_service: LLMService = None):
-        super().__init__(name="recovery")
+    def __init__(
+        self,
+        llm_service: LLMService = None,
+        config_repo: Optional["AgentConfigRepository"] = None,
+    ):
+        super().__init__(name="recovery", config_repo=config_repo)
         self.llm = llm_service or LLMService()
 
     async def execute(self, context: AgentContext) -> AgentResult:
+        await self.load_config()
+        
         start_time = time.time()
         query = context.query or ""
         session_id = context.session_id
@@ -27,7 +36,7 @@ class RecoveryAgent(BaseAgent):
         logger.info(f"[RecoveryAgent] Confidence: {confidence:.2f}")
         
         try:
-            system_prompt = """你是一个故障恢复专家。你的任务是基于根因分析结果，
+            default_prompt = """你是一个故障恢复专家。你的任务是基于根因分析结果，
 制定恢复方案，评估风险等级。
 
 请严格返回JSON格式的结果（不要包含markdown代码块标记），包含：
@@ -45,6 +54,7 @@ class RecoveryAgent(BaseAgent):
     "rollback_plan": "回滚方案描述",
     "estimated_impact": "影响评估"
 }"""
+            system_prompt = self.get_system_prompt(default_prompt)
             
             prompt = f"""请为以下问题制定恢复方案：
 问题：{query}
